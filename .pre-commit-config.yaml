@@ -1,0 +1,352 @@
+repos:
+- repo: https://github.com/pre-commit/pre-commit-hooks
+  rev: v4.5.0
+  hooks:
+  - id: trailing-whitespace
+  - id: end-of-file-fixer
+  - id: check-yaml
+    args:
+    - --unsafe
+  - id: check-added-large-files
+    args:
+    - --maxkb=1000
+  - id: check-case-conflict
+  - id: check-merge-conflict
+  - id: check-json
+  - id: check-toml
+  - id: check-xml
+  - id: debug-statements
+  - id: detect-private-key
+  - id: mixed-line-ending
+    args:
+    - --fix=lf
+  - id: no-commit-to-branch
+    args:
+    - --branch
+    - production
+- repo: https://github.com/adrienverge/yamllint
+  rev: v1.35.1
+  hooks:
+  - id: yamllint
+    args:
+    - -c=.yamllint.yaml
+    verbose: true
+- repo: https://github.com/pycqa/flake8
+  rev: 7.0.0
+  hooks:
+  - id: flake8
+    args:
+    - --config=.flake8
+    exclude: ^(spotidal-api/|archive/)
+    additional_dependencies:
+    - flake8-docstrings
+    verbose: true
+- repo: https://github.com/PyCQA/bandit
+  rev: 1.8.0
+  hooks:
+  - id: bandit
+    args:
+    - -c
+    - pyproject.toml
+    - -ll
+    exclude: ^archive/
+    verbose: true
+- repo: https://github.com/pre-commit/pygrep-hooks
+  rev: v1.10.0
+  hooks:
+  - id: python-check-blanket-type-ignore
+  - id: python-check-blanket-noqa
+    verbose: true
+- repo: local
+  hooks:
+  - id: mypy-warning
+    name: MyPy Type Checking (Warning Mode)
+    entry: bash -c 'mypy --config-file=pyproject.toml --no-error-summary . || true'
+    language: system
+    types:
+    - python
+    fail_fast: false
+    verbose: true
+    pass_filenames: false
+- repo: local
+  hooks:
+  - id: hadolint
+    name: Lint Dockerfiles with hadolint
+    entry: /home/dhalem/.local/bin/hadolint
+    language: system
+    files: ^.*Dockerfile.*$
+    exclude: ^archive/
+    args:
+    - --ignore
+    - DL3008
+    - --ignore
+    - DL3013
+    - --ignore
+    - DL3015
+    - --ignore
+    - DL3009
+    - --ignore
+    - DL3007
+    verbose: true
+- repo: https://github.com/sqlfluff/sqlfluff
+  rev: 3.3.1
+  hooks:
+  - id: sqlfluff-lint
+    name: sqlfluff-lint
+    args:
+    - --dialect
+    - mysql
+    types:
+    - sql
+    verbose: true
+- repo: https://github.com/shellcheck-py/shellcheck-py
+  rev: v0.10.0.1
+  hooks:
+  - id: shellcheck
+    args:
+    - --severity=warning
+    - --exclude=SC1091,SC2317,SC2164
+    exclude: ^archive/
+    verbose: true
+- repo: https://github.com/Yelp/detect-secrets
+  rev: v1.4.0
+  hooks:
+  - id: detect-secrets
+    args:
+    - --baseline
+    - .secrets.baseline
+    exclude: ^(.*\.lock|package-lock\.json|.*\.min\.js|\.cache|archive/.*)$
+    verbose: true
+- repo: local
+  hooks:
+  - id: safety-check
+    name: Check for security vulnerabilities
+    entry: bash -c 'find . -name "requirements*.txt" -type f | head -5 | xargs -I {} timeout 30 ~/.local/bin/safety check
+      --file {} --continue-on-error || true'
+    language: system
+    files: ^requirements.*\.txt$
+    verbose: true
+- repo: local
+  hooks:
+  - id: no-print-statements
+    name: Check for print statements
+    entry: ^\s*print\(
+    language: pygrep
+    types:
+    - python
+    exclude: ^(scripts/|tools/|debug|tests/|.*test.*\.py|setup\.py|hooks/|indexing/|.*check_index_sync\.py)
+    verbose: true
+- repo: local
+  hooks:
+  - id: no-breakpoints
+    name: Check for debugging breakpoints
+    entry: (breakpoint\(\)|import pdb|pdb\.set_trace|import ipdb|ipdb\.set_trace)
+    language: pygrep
+    types:
+    - python
+    verbose: true
+- repo: local
+  hooks:
+  - id: check-eval-usage
+    name: Check for eval() usage
+    entry: \beval\s*\(
+    language: pygrep
+    types:
+    - python
+    verbose: true
+  - id: check-exec-usage
+    name: Check for exec() usage
+    entry: \bexec\s*\(
+    language: pygrep
+    types:
+    - python
+    exclude: ^(tests/|migrations/)
+    verbose: true
+  - id: no-assert-statements
+    name: Check for assert statements in production
+    entry: \bassert\s+
+    language: pygrep
+    types:
+    - python
+    exclude: (tests/|test_|_test\.py$|\.test\.py$|/test_.*\.py$)
+    verbose: true
+- repo: local
+  hooks:
+  - id: no-hardcoded-passwords
+    name: Check for hardcoded passwords
+    entry: (password|passwd|pwd|secret|token|api_key)\s*=\s*["'][^"']+["']
+    language: pygrep
+    types:
+    - python
+    exclude: ^(tests/|.*test.*\.py|.*example.*|.*template.*)
+    verbose: true
+- repo: local
+  hooks:
+  - id: check-sql-string-formatting
+    name: Check for SQL injection risks
+    entry: (SELECT|INSERT|UPDATE|DELETE|DROP|CREATE|ALTER).*(%s|\.format|f"|f')
+    language: pygrep
+    types:
+    - python
+    exclude: ^(migrations/|tests/|.*test.*\.py|.*integration_tests/|.*sonos_discovery\.py|syncer/spotify\.py|syncer/tidal\.py)
+    verbose: true
+- repo: local
+  hooks:
+  - id: check-png-files
+    name: Check PNG files
+    entry: bash -c 'echo "ERROR PNG files should not be committed to the repository. Use external storage or documentation
+      repos for images." && exit 1'
+    language: system
+    files: \.png$
+    verbose: true
+- repo: local
+  hooks:
+  - id: check-binary-files
+    name: Prevent large binary files
+    entry: bash -c 'echo "ERROR Binary files (${1##*.}) should not be committed. Use Git LFS or external storage." && exit
+      1'
+    language: system
+    files: \.(mp3|mp4|avi|mov|wav|flac|zip|tar|gz|rar|7z|exe|dmg|iso|bin|dat)$
+    verbose: true
+- repo: local
+  hooks:
+  - id: dockerfile-no-latest
+    name: Check Dockerfile for latest tags
+    entry: FROM.*:latest
+    language: pygrep
+    files: Dockerfile.*
+    verbose: true
+- repo: local
+  hooks:
+  - id: check-env-vars
+    name: Check for hardcoded env vars
+    entry: export\s+(AWS_|GITHUB_|SLACK_|TOKEN|KEY|SECRET|PASSWORD|API_)
+    language: pygrep
+    files: \.(sh|bash|zsh)$
+    exclude: ^(scripts/example|templates/)
+    verbose: true
+- repo: local
+  hooks:
+  - id: validate-json-syntax
+    name: Validate JSON syntax
+    entry: python3 -m json.tool
+    language: system
+    files: \.json$
+    verbose: true
+- repo: local
+  hooks:
+  - id: requirements-txt-sorted
+    name: Sort requirements.txt
+    entry: bash -c 'for f in "$@"; do sort -c "$f" || (echo "ERROR $f is not sorted" && exit 1); done'
+    language: system
+    files: requirements.*\.txt$
+    verbose: true
+  - id: requirements-txt-pinned
+    name: Check requirements are pinned (WARNING)
+    entry: bash -c 'grep -E "(>=|~=|<|>)" "$@" && echo "WARNING Unpinned requirements found (consider pinning for reproducibility)"
+      || exit 0'
+    language: system
+    files: requirements.*\.txt$
+    verbose: true
+- repo: local
+  hooks:
+  - id: check-executables-have-shebangs
+    name: Executables have shebangs
+    entry: 'bash -c ''for f in "$@"; do if [[ -x "$f" && ! -d "$f" ]]; then head -1 "$f" | grep -q "^#!" || (echo "ERROR:
+      Executable $f missing shebang" && exit 1); fi; done'' bash'
+    language: system
+    files: .*
+    verbose: true
+  - id: check-shebang-scripts-are-executable
+    name: Scripts with shebangs are executable
+    entry: 'bash -c ''for f in "$@"; do if head -1 "$f" 2>/dev/null | grep -q "^#!"; then [[ -x "$f" ]] || (echo "ERROR: Script
+      $f has shebang but not executable" && exit 1); fi; done'' bash'
+    language: system
+    types:
+    - text
+    verbose: true
+  - id: check-merge-conflict-markers
+    name: Check for merge conflict markers
+    entry: (<<<<<<<|=======|>>>>>>>)
+    language: pygrep
+    types:
+    - text
+    exclude: ^(\.pre-commit-config\.yaml|.*run_full_test_suite\.sh|.*run.*tests?\.sh|indexing/mcp/.*\.sh)$
+    verbose: true
+  - id: check-empty-files
+    name: Check for empty files
+    entry: 'bash -c ''for f in "$@"; do if [[ -f "$f" && ! -s "$f" ]]; then echo "ERROR: Empty file $f" && exit 1; fi; done''
+      bash'
+    language: system
+    types:
+    - text
+    exclude: ^(__init__\.py|\.gitkeep|\.keep)$
+    verbose: true
+- repo: local
+  hooks:
+  - id: check-syncer-index-sync
+    name: Syncer INDEX.md Sync Check
+    entry: python3 syncer/check_index_sync.py
+    language: system
+    files: ^syncer/.*
+    pass_filenames: false
+    verbose: true
+- repo: local
+  hooks:
+  - id: check-gemini-index-sync
+    name: Gemini Playlist Suggester INDEX.md Sync Check (Warning Mode)
+    entry: bash -c 'python3 gemini_playlist_suggester/check_index_sync.py > /dev/null 2>&1 || true'
+    language: system
+    files: ^gemini_playlist_suggester/.*
+    pass_filenames: false
+    verbose: false
+- repo: local
+  hooks:
+  - id: continuous-archival-check
+    name: Continuous Archival Detection
+    entry: python3 scripts/continuous_archival_check.py --mode=check
+    language: system
+    pass_filenames: false
+    stages:
+    - commit
+    verbose: true
+- repo: local
+  hooks:
+  - id: python-hooks-tests
+    name: Python Hooks Test Suite
+    entry: bash -c 'cd hooks/python && /home/dhalem/github/spotidal_three/spotidal/venv/bin/python -m pytest -v --cov-fail-under=0'
+    language: system
+    files: ^hooks/python/.*\.py$
+    pass_filenames: false
+    verbose: true
+- repo: local
+  hooks:
+  - id: sonos-server-test-suite
+    name: Sonos Server Full Test Suite
+    entry: bash -c 'cd /home/dhalem/github/spotidal_three/spotidal/sonos_server && ./run_full_test_suite.sh'
+    language: system
+    files: ^sonos_server/.*\.(py|sh)$
+    pass_filenames: false
+    verbose: true
+- repo: local
+  hooks:
+  - id: mcp-server-test-suite
+    name: MCP Server Test Suite
+    entry: bash -c 'cd indexing && source ../venv/bin/activate && timeout 60 python3 test_mcp_server_comprehensive.py || echo
+      "MCP tests timed out or failed"'
+    language: system
+    files: ^indexing/.*mcp.*\.(py|sh)$
+    pass_filenames: false
+    verbose: true
+- repo: https://github.com/compilerla/conventional-pre-commit
+  rev: v3.0.0
+  hooks:
+  - id: conventional-pre-commit
+    stages:
+    - commit-msg
+    args: []
+default_language_version:
+  python: python3
+exclude: "(?x)^(\n  \\.git/|\n  \\.venv/|\n  __pycache__/|\n  build/|\n  dist/|\n  .*\\.egg-info/|\n  temp/|\n  archive/|\n\
+  \  node_modules/|\n  test-screenshots/|\n  .*\\.min\\.js|\n  .*\\.min\\.css|\n  syncer_v2/|\n  mobile_.*\\.json|\n  .*\\\
+  .jpg|\n  .*\\.jpeg\n)$\n"

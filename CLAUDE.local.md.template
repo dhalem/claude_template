@@ -1,0 +1,23 @@
+# CLAUDE.local.md - Project-Specific Guidelines
+
+This file contains project-specific rules and guidelines for AI assistants.
+Copy this to `CLAUDE.local.md` and customize for your project.
+
+## Project Overview
+
+[Describe your project here]
+
+## Project-Specific Rules
+
+1. [Add your specific rules]
+2. [Add more rules as needed]
+
+## Important Paths
+
+- Source code: `src/`
+- Tests: `tests/`
+- Documentation: `docs/`
+
+## Development Notes
+
+[Add any project-specific development notes]

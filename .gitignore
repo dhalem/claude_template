@@ -1,0 +1,146 @@
+# Credentials and secrets
+/credentials.json
+/syncer/credentials.json
+*.json.old
+*.key
+*.pem
+*.p12
+**/credentials.json
+
+# Personal configuration
+CLAUDE.local.md
+SECURITY_CLEANUP_CHECKLIST.md
+SECURITY_ISSUES_FOUND.md
+MIGRATION_WORKFLOW.md
+
+# Security and backup scripts
+scripts/
+
+# Environment files
+.env
+.env.local
+.env.production
+syncer/.env
+gemini_playlist_suggester/.env
+sonos_server/.env
+monitoring/.env
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+test-venv/
+
+# Node.js and JavaScript
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+yarn.lock
+
+# React Native
+*.jsbundle
+*.map
+ios/build/
+android/build/
+android/app/build/
+
+# iOS
+ios/Pods/
+ios/*.xcworkspace/xcuserdata/
+ios/*.xcodeproj/xcuserdata/
+ios/build/
+ios/DerivedData/
+*.xcarchive
+**/*.mobileprovision
+**/ExportOptions*.plist
+**/exportOptions.plist
+
+# Android
+*.apk
+*.aab
+android/.gradle/
+android/app/release/
+
+# Metro bundler cache
+.metro/
+
+# Expo (if used)
+.expo/
+dist/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Docker
+.dockerignore
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+server.log
+server.pid
+
+# Temporary files
+*.tmp
+*.temp
+/tmp/
+/temp/
+
+# Backup directories
+sonos_server_backup/
+
+# Test coverage
+htmlcov/
+.coverage
+.coverage.*
+.pytest_cache/
+test-results/
+
+# Test screenshots (temporary)
+test-screenshots/
+*.test.png
+*.tmp.png
+
+# Personal notes and documentation
+notes.txt
+TIDAL_MATCHING_PERFORMANCE_ANALYSIS.md
+summary_approach1_findings.md
+system_health_report.md
+
+# Auth cache
+.auth-cache.json
+.tidal-dl.auth.json
+.tidal-auth-cache
+
+# Media files (if storing locally)
+/downloads/
+/media/
+
+# Claude Code local settings
+.claude/settings.local.json
+.pre-commit-cache/
+.cache
+
+# Code index database
+.code_index.db
+
+# Continuous archival task files
+.claude-archival-needed

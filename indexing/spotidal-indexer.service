@@ -1,0 +1,14 @@
+[Unit]
+Description=Spotidal Code Index Watcher
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/dhalem/github/four/spotidal
+ExecStart=/usr/bin/python3 /home/dhalem/github/four/spotidal/indexing/watch_and_index.py
+Restart=always
+RestartSec=10
+User=dhalem
+
+[Install]
+WantedBy=multi-user.target
