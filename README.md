@@ -389,6 +389,36 @@ After installation, verify these work:
 - [ ] `pytest --version`
 - [ ] `ls .pre-commit-config.yaml pyproject.toml CLAUDE.md`
 
+## 🧑‍💻 Hook Development
+
+This template also serves as a development environment for creating and improving Claude Code safety hooks:
+
+### Quick Development Setup
+```bash
+# Set up development environment for hook development
+./setup-development.sh
+
+# Create a new guard
+./scripts/develop-hooks.sh new-guard my_security_check
+
+# Test hooks
+./scripts/develop-hooks.sh test
+
+# Run performance tests
+./scripts/test-performance.sh
+```
+
+### Development Features
+- **Complete testing framework** with pytest and coverage
+- **Automated CI/CD** with GitHub Actions
+- **Security scanning** with bandit and safety
+- **Performance benchmarking** with pytest-benchmark
+- **Code quality tools** with black, ruff, and mypy
+- **Guard templates** for rapid development
+- **Integration testing** with real Claude Code scenarios
+
+📖 **Read [DEVELOPMENT.md](DEVELOPMENT.md) for the complete development guide**
+
 ## License
 
 MIT License - Use this template for any project!
