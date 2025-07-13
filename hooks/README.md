@@ -44,6 +44,18 @@ The installation script:
 - ✅ Configures hooks in `~/.claude/settings.json`
 - ✅ Validates everything works correctly
 
+## Override System
+
+🔓 **Need to bypass a hook?** The system includes a secure override mechanism:
+
+- Uses **Google Authenticator** for time-based codes
+- Requires **explicit human approval** for each override
+- Codes are **valid for 30 seconds only**
+- Full **audit logging** of all overrides
+
+**Setup**: Run `./setup-authenticator.sh` to configure Google Authenticator
+**Documentation**: See `OVERRIDE_SYSTEM.md` for complete details
+
 ## For Full Documentation
 
 👉 **Read `HOOKS.md`** for complete details on:

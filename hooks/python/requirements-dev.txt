@@ -23,3 +23,6 @@ ipdb==0.13.13
 # Type stubs
 types-requests
 types-PyYAML
+
+# Override system dependencies
+pyotp>=2.9.0

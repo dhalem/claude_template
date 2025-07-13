@@ -117,43 +117,42 @@ All override attempts are logged with:
 
 ## Setup Instructions
 
-### 1. Generate TOTP Secret
+**📱 For complete step-by-step setup including Google Authenticator installation and configuration, see [AUTHENTICATOR_SETUP.md](AUTHENTICATOR_SETUP.md)**
+
+### Quick Setup
+
+1. **Install Google Authenticator** on your phone (iOS/Android)
+
+2. **Run the automated setup script**:
+   ```bash
+   ./hooks/setup-authenticator.sh
+   ```
+   This will:
+   - Generate a secure secret
+   - Guide you through adding it to Google Authenticator
+   - Verify your setup is working
+   - Show you how to configure your environment
+
+### Manual Setup
+
+If you prefer manual setup:
 
 ```bash
-# Generate a secure base32 secret
+# 1. Generate TOTP Secret
 python -c "import pyotp; print(pyotp.random_base32())"
 # Example output: JBSWY3DPEHPK3PXP
-```
 
-### 2. Add to Google Authenticator
+# 2. Add to Google Authenticator app:
+#    - Tap "+" → "Enter a setup key"
+#    - Account: Claude Hook Override
+#    - Key: [Your generated secret]
+#    - Type: Time based
 
-1. Open Google Authenticator app
-2. Tap "+" to add new account
-3. Choose "Enter a setup key"
-4. Enter:
-   - Account: `Claude Hook Override`
-   - Key: `[Your generated secret]`
-   - Type: Time based
-
-### 3. Configure Hook System
-
-Set the TOTP secret as an environment variable:
-
-```bash
-# Add to your shell profile or secure configuration
+# 3. Configure environment
 export HOOK_OVERRIDE_SECRET="JBSWY3DPEHPK3PXP"
-```
 
-### 4. Test Override System
-
-```bash
-# Test with a command that would normally be blocked
+# 4. Test the system
 echo '{"tool": "bash", "command": "rm -rf /"}' | ./hooks/adaptive-guard.sh
-# Should show override instructions
-
-# Test with override code
-HOOK_OVERRIDE_CODE=123456 echo '{"tool": "bash", "command": "rm -rf /"}' | ./hooks/adaptive-guard.sh
-# Should allow if code is valid
 ```
 
 ## Usage Guidelines
@@ -268,7 +267,7 @@ def test_valid_override_allows_command():
     """Test that valid TOTP code allows command."""
     guard = FileGuard()
     os.environ["HOOK_OVERRIDE_CODE"] = generate_valid_totp()
-    
+
     result = guard.check({"command": "rm -rf /"})
     assert result["blocked"] is False
     assert "override_used" in result
@@ -277,7 +276,7 @@ def test_invalid_override_maintains_block():
     """Test that invalid code does not bypass block."""
     guard = FileGuard()
     os.environ["HOOK_OVERRIDE_CODE"] = "000000"
-    
+
     result = guard.check({"command": "rm -rf /"})
     assert result["blocked"] is True
     assert "override_failed" in result.get("metadata", {})

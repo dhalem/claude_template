@@ -23,3 +23,6 @@ faker==24.3.0
 # Type stubs
 types-requests
 types-PyYAML
+
+# Hook override system
+pyotp>=2.9.0
