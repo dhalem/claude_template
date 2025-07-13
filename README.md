@@ -1,5 +1,17 @@
 # Claude Development Template
 
+**🤖 Copy and paste this prompt to get started:**
+
+```
+Please install the Claude development template from https://github.com/dhalem/claude_template into my current project. Follow the Agent Setup section in the README to automatically install all development tools, hooks, and configurations.
+```
+
+**🧑‍💻 For hook development, use this prompt:**
+
+```
+Please set up the Claude template development environment from https://github.com/dhalem/claude_template for developing new Claude Code safety hooks. Run setup-development.sh and follow the DEVELOPMENT.md guide.
+```
+
 **AI Agent Instructions: Follow the [Agent Setup](#agent-setup) section below to automatically install this template.**
 
 ## Agent Setup
