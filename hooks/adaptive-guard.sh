@@ -58,6 +58,14 @@ fi
 # Read JSON input from stdin
 INPUT_JSON=$(cat)
 
+# Extract HOOK_OVERRIDE_CODE from command if present
+if echo "$INPUT_JSON" | grep -q '"command".*HOOK_OVERRIDE_CODE='; then
+    OVERRIDE_CODE=$(echo "$INPUT_JSON" | sed -n 's/.*HOOK_OVERRIDE_CODE=\([0-9]\{6\}\).*/\1/p')
+    if [[ -n "$OVERRIDE_CODE" ]]; then
+        export HOOK_OVERRIDE_CODE="$OVERRIDE_CODE"
+    fi
+fi
+
 # Call Python implementation (stay in original directory for correct file paths)
 python3 "$PYTHON_HOOKS_DIR/main.py" adaptive <<< "$INPUT_JSON"
 

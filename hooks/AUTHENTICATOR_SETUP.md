@@ -4,10 +4,20 @@ This guide will walk you through setting up Google Authenticator for the Claude 
 
 ## Prerequisites
 
-You'll need:
-- A smartphone (iOS or Android)
-- Google Authenticator app (or compatible TOTP app like Authy, Microsoft Authenticator, etc.)
-- Access to your development environment
+**🚨 IMPORTANT: Run the installation script first!**
+
+1. **Install the hook system with override functionality**:
+   ```bash
+   ./hooks/install-hooks-python-only.sh
+   ```
+   This automatically installs all required Python dependencies including pyotp.
+
+2. **Then you'll need**:
+   - A smartphone (iOS or Android)
+   - Google Authenticator app (or compatible TOTP app like Authy, Microsoft Authenticator, etc.)
+   - Access to your development environment
+
+**The installation script handles all Python requirements and dependencies automatically. You don't need to manually install pyotp or any other dependencies.**
 
 ## Step-by-Step Setup
 
@@ -85,7 +95,17 @@ The code shown should match what's in your Google Authenticator app!
 
 ### Step 5: Configure Your Environment
 
-Add the secret to your environment. Choose ONE of these methods:
+**🚨 GOOD NEWS: The setup script handles this automatically!**
+
+When you run `./hooks/setup-authenticator.sh`, it will:
+- ✅ Set `HOOK_OVERRIDE_SECRET` for your current session
+- ✅ Offer to make it permanent in your shell configuration
+- ✅ Handle shell detection (bash/zsh) automatically
+- ✅ Avoid duplicates if already configured
+
+**Manual Configuration (if needed):**
+
+If you need to configure manually, choose ONE of these methods:
 
 **Option A: Shell Profile (Permanent)**
 ```bash

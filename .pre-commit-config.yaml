@@ -190,7 +190,7 @@ repos:
   hooks:
   - id: python-hooks-tests
     name: Python Hooks Test Suite
-    entry: bash -c 'cd hooks/python && python3 -m pytest -v --cov-fail-under=0'
+    entry: bash -c 'cd hooks/python && python3 -m pytest -v'
     language: system
     files: ^hooks/python/.*\.py$
     pass_filenames: false

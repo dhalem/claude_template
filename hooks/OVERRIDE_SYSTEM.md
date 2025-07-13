@@ -117,13 +117,26 @@ All override attempts are logged with:
 
 ## Setup Instructions
 
+**🚨 IMPORTANT: The installation script automatically handles all Python dependencies and requirements setup for the venv it uses. You don't need to manually install anything.**
+
 **📱 For complete step-by-step setup including Google Authenticator installation and configuration, see [AUTHENTICATOR_SETUP.md](AUTHENTICATOR_SETUP.md)**
 
-### Quick Setup
+### Quick Setup (Recommended)
 
-1. **Install Google Authenticator** on your phone (iOS/Android)
+1. **Install the hook system with override functionality**:
+   ```bash
+   ./hooks/install-hooks-python-only.sh
+   ```
+   This installation script automatically:
+   - ✅ Installs all Python dependencies (including pyotp)
+   - ✅ Sets up the hook system with override functionality
+   - ✅ Configures the proper Python environment
+   - ✅ Updates hook wrapper scripts
+   - ✅ Provides clear next steps
 
-2. **Run the automated setup script**:
+2. **Install Google Authenticator** on your phone (iOS/Android)
+
+3. **Run the automated setup script**:
    ```bash
    ./hooks/setup-authenticator.sh
    ```
@@ -131,7 +144,8 @@ All override attempts are logged with:
    - Generate a secure secret
    - Guide you through adding it to Google Authenticator
    - Verify your setup is working
-   - Show you how to configure your environment
+   - **Automatically create .env file in hooks directory**
+   - **Ready to use immediately - hooks load the secret automatically**
 
 ### Manual Setup
 

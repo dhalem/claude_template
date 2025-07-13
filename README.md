@@ -202,6 +202,40 @@ bandit -r src/      # Security scanning
 - **Git operation safety** - Protects against dangerous git commands
 - **Container state awareness** - Distinguishes local vs containerized environments
 - **Meta-cognitive monitoring** - Tracks AI decision-making patterns
+- **TOTP override system** - Google Authenticator integration for authorized bypasses
+
+### 🔐 Google Authenticator Override System
+The template includes a secure override system for when hooks block legitimate operations:
+
+**🚨 IMPORTANT: The installation script automatically handles all Python dependencies and requirements setup.**
+
+#### Quick Setup
+1. **Install the hook system** (handles all dependencies automatically):
+   ```bash
+   ./hooks/install-hooks-python-only.sh
+   ```
+
+2. **Setup Google Authenticator** (fully automated):
+   ```bash
+   ./hooks/setup-authenticator.sh
+   ```
+   This automatically:
+   - Generates a secure TOTP secret
+   - Guides you through Google Authenticator setup
+   - **Creates .env file in hooks directory for automatic loading**
+   - **Ready to use immediately - no manual configuration needed**
+
+#### How It Works
+- When hooks block commands, you'll see override instructions
+- Get 6-digit code from Google Authenticator app
+- Re-run command: `HOOK_OVERRIDE_CODE=123456 your-command`
+- All overrides are audited and logged
+
+#### Features
+- ✅ 30-second TOTP validation with time-window tolerance
+- ✅ Secure audit logging of all override attempts
+- ✅ Fallback implementation when pyotp unavailable
+- ✅ Integration with existing Claude Code hook system
 
 ### Code Search Capabilities
 - **Symbol search**: Functions, classes, variables, imports

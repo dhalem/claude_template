@@ -3,6 +3,7 @@
 import os
 import sys
 import unittest
+from unittest.mock import patch
 
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -271,7 +272,7 @@ class TestGuardContextEdgeCases(unittest.TestCase):
 class TestBaseGuardEdgeCases(unittest.TestCase):
     """Test edge cases for BaseGuard implementations."""
 
-    @unittest.mock.patch("builtins.input", return_value="y")
+    @patch("builtins.input", return_value="y")
     def test_concrete_guard_interactive_with_allow_default(self, mock_input):
         """Test concrete guard with ALLOW default in interactive mode."""
         guard = ConcreteGuard(default_action=GuardAction.ALLOW)
@@ -297,7 +298,7 @@ class TestBaseGuardEdgeCases(unittest.TestCase):
         self.assertEqual(result.exit_code, 0)
         self.assertIn("ConcreteGuard triggered", result.message)
 
-    @unittest.mock.patch("builtins.input", return_value="n")
+    @patch("builtins.input", return_value="n")
     def test_concrete_guard_interactive_with_block_default(self, mock_input):
         """Test concrete guard with BLOCK default in interactive mode."""
         guard = ConcreteGuard(default_action=GuardAction.BLOCK)
