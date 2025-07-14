@@ -26,6 +26,26 @@ class PythonVenvGuard(BaseGuard):
 
         command = context.command.strip()
 
+        # Skip git commit commands - they may contain "python" in commit messages
+        if "git commit" in command.lower():
+            return False
+
+        # Skip other commands that commonly contain "python" in text but don't execute Python
+        excluded_commands = [
+            r"^grep\s+",  # grep commands
+            r"^find\s+",  # find commands
+            r"^sed\s+",   # sed commands
+            r"^awk\s+",   # awk commands
+        ]
+
+        for pattern in excluded_commands:
+            if re.search(pattern, command, re.IGNORECASE):
+                return False
+
+        # Special case: echo/cat commands that don't pipe to python
+        if re.search(r"^(echo|cat)\s+", command, re.IGNORECASE) and not re.search(r"\|\s*python3?", command, re.IGNORECASE):
+            return False
+
         # Patterns that indicate running Python scripts without venv
         python_patterns = [
             r"(^|[;&|]|\s)\s*python\s+",  # python at start or after separators
