@@ -1,37 +1,29 @@
 #!/usr/bin/env python3
+# RULE #0: MANDATORY FIRST ACTION FOR EVERY REQUEST
+# 1. Read CLAUDE.md COMPLETELY before responding
+# 2. Setup Python venv: [ -d "venv" ] || ./setup-venv.sh && source venv/bin/activate
+# 3. Search for rules related to the request
+# 4. Only proceed after confirming no violations
+# Failure to follow Rule #0 has caused real harm. Check BEFORE acting, not AFTER making mistakes.
+#
+# GUARDS ARE SAFETY EQUIPMENT - WHEN THEY FIRE, FIX THE PROBLEM THEY FOUND
+# NEVER weaken, disable, or bypass guards - they prevent real harm
+
 """MCP server for code search using the official MCP library."""
 
 import asyncio
 import logging
 import os
+import sqlite3
 import sys
 from datetime import datetime
 from pathlib import Path
+from typing import Any, Dict, Optional
 
 from mcp.server import NotificationOptions, Server
 from mcp.server.models import InitializationOptions
 from mcp.server.stdio import stdio_server
 from mcp.types import TextContent, Tool
-
-# Use local imports - all required modules are in src/
-try:
-    from .src.code_searcher import CodeSearcher
-except ImportError:
-    # Fallback for direct execution - determine current directory safely
-    try:
-        current_file_dir = os.path.dirname(os.path.abspath(__file__))
-    except NameError:
-        # If __file__ is not defined, try sys.argv[0] or current directory
-        if sys.argv and sys.argv[0]:
-            current_file_dir = os.path.dirname(os.path.abspath(sys.argv[0]))
-        else:
-            current_file_dir = os.path.abspath(".")
-
-    src_path = os.path.join(current_file_dir, 'src')
-    if src_path not in sys.path:
-        sys.path.insert(0, src_path)
-
-    from code_searcher import CodeSearcher
 
 # Set up logging
 LOG_DIR = Path.home() / ".claude" / "mcp" / "code-search" / "logs"
@@ -48,6 +40,203 @@ logging.basicConfig(
 )
 
 logger = logging.getLogger(__name__)
+
+
+class CodeSearcher:
+    """Handles code search operations using the existing .code_index.db"""
+
+    def __init__(self, db_path: Optional[str] = None):
+        """Initialize the code searcher.
+
+        Args:
+            db_path: Path to the database file. If None, searches for .code_index.db
+        """
+        self.db_path = self._find_database(db_path)
+        logger.info(f"Using database at: {self.db_path}")
+
+    def _find_database(self, db_path: Optional[str] = None) -> str:
+        """Find the code index database."""
+        if db_path and os.path.exists(db_path):
+            return db_path
+
+        # Search for .code_index.db in common locations
+        search_paths = [
+            Path.cwd() / ".code_index.db",
+            Path.home() / ".code_index.db",
+            Path("/app/.code_index.db"),  # Docker container path
+        ]
+
+        # Also check parent directories up to 3 levels
+        current = Path.cwd()
+        for _ in range(3):
+            search_paths.append(current / ".code_index.db")
+            current = current.parent
+
+        for path in search_paths:
+            if path.exists():
+                return str(path)
+
+        raise FileNotFoundError(
+            "No .code_index.db found. Please run the code indexer first.\n"
+            "You can start it with: ./start-indexer.sh"
+        )
+
+    def search(self, query: str, search_type: str = "name",
+               symbol_type: Optional[str] = None, limit: int = 50) -> Dict[str, Any]:
+        """Search for code symbols.
+
+        Args:
+            query: Search query (supports * and ? wildcards)
+            search_type: Type of search - 'name', 'content', or 'file'
+            symbol_type: Filter by symbol type - 'function', 'class', 'method', or 'variable'
+            limit: Maximum number of results
+
+        Returns:
+            Dictionary with search results
+        """
+        try:
+            conn = sqlite3.connect(self.db_path)
+            conn.row_factory = sqlite3.Row
+
+            # Convert wildcards to SQL LIKE pattern
+            pattern = query.replace('*', '%').replace('?', '_')
+
+            # Build SQL query based on search type
+            if search_type == "file":
+                sql = """
+                    SELECT DISTINCT file_path, COUNT(*) as symbol_count
+                    FROM symbols
+                    WHERE file_path LIKE ?
+                    GROUP BY file_path
+                    ORDER BY file_path
+                    LIMIT ?
+                """
+                params = [f"%{pattern}%", limit]
+
+            else:
+                sql = """
+                    SELECT name, type, file_path, line_number, column,
+                           parent, signature, docstring
+                    FROM symbols
+                    WHERE 1=1
+                """
+                params = []
+
+                if search_type == "name":
+                    sql += " AND name LIKE ?"
+                    params.append(pattern)
+                elif search_type == "content":
+                    sql += " AND (name LIKE ? OR docstring LIKE ? OR signature LIKE ?)"
+                    params.extend([f"%{pattern}%", f"%{pattern}%", f"%{pattern}%"])
+
+                if symbol_type:
+                    sql += " AND type = ?"
+                    params.append(symbol_type)
+
+                sql += " ORDER BY name, file_path LIMIT ?"
+                params.append(limit)
+
+            cursor = conn.execute(sql, params)
+            results = []
+
+            if search_type == "file":
+                for row in cursor:
+                    results.append({
+                        "file_path": row["file_path"],
+                        "symbol_count": row["symbol_count"]
+                    })
+            else:
+                for row in cursor:
+                    results.append({
+                        "name": row["name"],
+                        "type": row["type"],
+                        "file_path": row["file_path"],
+                        "line_number": row["line_number"],
+                        "column": row["column"],
+                        "parent": row["parent"],
+                        "signature": row["signature"],
+                        "docstring": row["docstring"],
+                        "location": f"{row['file_path']}:{row['line_number']}"
+                    })
+
+            conn.close()
+
+            return {
+                "success": True,
+                "query": query,
+                "search_type": search_type,
+                "symbol_type": symbol_type,
+                "count": len(results),
+                "results": results
+            }
+
+        except Exception as e:
+            logger.error(f"Search error: {e}")
+            return {
+                "success": False,
+                "error": str(e),
+                "query": query,
+                "search_type": search_type
+            }
+
+    def list_symbols(self, symbol_type: str, limit: int = 100) -> Dict[str, Any]:
+        """List all symbols of a specific type.
+
+        Args:
+            symbol_type: Type of symbol - 'function', 'class', 'method', or 'variable'
+            limit: Maximum number of results
+
+        Returns:
+            Dictionary with symbol list
+        """
+        return self.search("*", search_type="name", symbol_type=symbol_type, limit=limit)
+
+    def get_stats(self) -> Dict[str, Any]:
+        """Get database statistics.
+
+        Returns:
+            Dictionary with database stats
+        """
+        try:
+            conn = sqlite3.connect(self.db_path)
+
+            stats = {}
+
+            # Total symbols
+            cursor = conn.execute("SELECT COUNT(*) FROM symbols")
+            stats["total_symbols"] = cursor.fetchone()[0]
+
+            # Symbols by type
+            cursor = conn.execute("""
+                SELECT type, COUNT(*) as count
+                FROM symbols
+                GROUP BY type
+            """)
+            stats["by_type"] = {row[0]: row[1] for row in cursor}
+
+            # Total files
+            cursor = conn.execute("SELECT COUNT(DISTINCT file_path) FROM symbols")
+            stats["total_files"] = cursor.fetchone()[0]
+
+            # Get last indexed time from symbols table
+            cursor = conn.execute("SELECT MAX(indexed_at) FROM symbols")
+            row = cursor.fetchone()
+            if row and row[0]:
+                stats["last_indexed"] = row[0]
+
+            conn.close()
+
+            return {
+                "success": True,
+                "stats": stats
+            }
+
+        except Exception as e:
+            logger.error(f"Stats error: {e}")
+            return {
+                "success": False,
+                "error": str(e)
+            }
 
 
 async def main():

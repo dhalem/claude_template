@@ -1,16 +1,10 @@
 #!/usr/bin/env python3
-# RULE #0: MANDATORY FIRST ACTION FOR EVERY REQUEST
-# 1. Read CLAUDE.md COMPLETELY before responding
-# 2. Setup Python venv: [ -d "venv" ] || ./setup-venv.sh && source venv/bin/activate
-# 3. Search for rules related to the request
-# 4. Only proceed after confirming no violations
-# Failure to follow Rule #0 has caused real harm. Check BEFORE acting, not AFTER making mistakes.
-#
-# GUARDS ARE SAFETY EQUIPMENT - WHEN THEY FIRE, FIX THE PROBLEM THEY FOUND
-# NEVER weaken, disable, or bypass guards - they prevent real harm
+"""Comprehensive tests for the MCP code search server.
 
-"""Comprehensive tests for the MCP code search server."""
+This consolidates all MCP search server tests into a single, well-organized test suite.
+"""
 
+import json
 import os
 import sqlite3
 import sys
@@ -19,16 +13,18 @@ import unittest
 from pathlib import Path
 from unittest.mock import Mock, patch
 
-# Add the current directory to Python path for imports
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+# Add parent directory to path for imports
+parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, parent_dir)
+sys.path.insert(0, os.path.dirname(parent_dir))  # For other modules if needed
 
-# Import the server module
 import mcp_search_server
-from mcp_search_server import CodeSearcher
+
+from src.code_searcher import CodeSearcher
 
 
 class TestCodeSearcher(unittest.TestCase):
-    """Test the CodeSearcher class."""
+    """Test the CodeSearcher class functionality."""
 
     def setUp(self):
         """Create a test database."""
@@ -51,13 +47,7 @@ class TestCodeSearcher(unittest.TestCase):
                 column INTEGER DEFAULT 0,
                 parent TEXT,
                 signature TEXT,
-                docstring TEXT
-            )
-        """)
-
-        cursor.execute("""
-            CREATE TABLE metadata (
-                id INTEGER PRIMARY KEY,
+                docstring TEXT,
                 indexed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
@@ -75,8 +65,6 @@ class TestCodeSearcher(unittest.TestCase):
             "INSERT INTO symbols (name, type, file_path, line_number, column, parent, signature, docstring) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
             test_symbols
         )
-
-        cursor.execute("INSERT INTO metadata (indexed_at) VALUES (datetime('now'))")
 
         conn.commit()
         conn.close()
@@ -96,9 +84,7 @@ class TestCodeSearcher(unittest.TestCase):
         self.assertEqual(searcher.db_path, self.test_db_path)
 
         # Test with non-existent database - it falls back to searching
-        # Since we have a real database in the container, this won't raise
-        # Instead test with a truly non-existent path
-        with patch('mcp_search_server.Path.exists', return_value=False):
+        with patch('src.code_searcher.Path.exists', return_value=False):
             with self.assertRaises(FileNotFoundError):
                 CodeSearcher()
 
@@ -175,38 +161,8 @@ class TestCodeSearcher(unittest.TestCase):
         self.assertIn("error", result)
 
 
-class TestMCPServer(unittest.TestCase):
-    """Test the MCP server integration."""
-
-    def setUp(self):
-        """Set up test environment."""
-        # Create a test database
-        self.test_db = tempfile.NamedTemporaryFile(suffix='.db', delete=False)
-        self.test_db_path = self.test_db.name
-        self.test_db.close()
-
-        # Create simple test database
-        conn = sqlite3.connect(self.test_db_path)
-        cursor = conn.cursor()
-        cursor.execute("""
-            CREATE TABLE symbols (
-                name TEXT, type TEXT, file_path TEXT,
-                line_number INTEGER, column INTEGER,
-                parent TEXT, signature TEXT, docstring TEXT
-            )
-        """)
-        cursor.execute("""
-            INSERT INTO symbols VALUES
-            ('test_func', 'function', '/test.py', 1, 0, NULL, '()', 'Test function')
-        """)
-        cursor.execute("CREATE TABLE metadata (indexed_at TIMESTAMP)")
-        conn.commit()
-        conn.close()
-
-    def tearDown(self):
-        """Clean up."""
-        if os.path.exists(self.test_db_path):
-            os.unlink(self.test_db_path)
+class TestMCPProtocol(unittest.TestCase):
+    """Test MCP protocol-level functionality."""
 
     @patch('mcp_search_server.CodeSearcher')
     async def test_handle_search_code(self, mock_searcher_class):
@@ -264,39 +220,71 @@ class TestMCPServer(unittest.TestCase):
         self.assertIn("Found: 1 results", result[0].text)
         self.assertIn("test_func (function)", result[0].text)
 
-    async def test_handle_list_tools(self):
-        """Test that the server lists the correct tools."""
-        from mcp.server import Server
-        server = Server("test-server")
 
-        # Set up list_tools handler
-        @server.list_tools()
-        async def handle_list_tools():
-            from mcp.types import Tool
-            return [
-                Tool(
-                    name="search_code",
-                    description="Search for code symbols",
-                    inputSchema={"type": "object", "properties": {}}
-                ),
-                Tool(
-                    name="list_symbols",
-                    description="List symbols by type",
-                    inputSchema={"type": "object", "properties": {}}
-                ),
-                Tool(
-                    name="get_search_stats",
-                    description="Get search statistics",
-                    inputSchema={"type": "object", "properties": {}}
-                )
-            ]
+class TestInstallation(unittest.TestCase):
+    """Test installation and configuration verification."""
 
-        tools = await handle_list_tools()
-        self.assertEqual(len(tools), 3)
-        tool_names = [tool.name for tool in tools]
-        self.assertIn("search_code", tool_names)
-        self.assertIn("list_symbols", tool_names)
-        self.assertIn("get_search_stats", tool_names)
+    def test_server_directory_structure(self):
+        """Test that server follows correct MCP directory structure."""
+        # This would be run after installation
+        mcp_dir = Path.home() / ".claude" / "mcp" / "code-search"
+
+        if mcp_dir.exists():
+            # Check required directories
+            self.assertTrue((mcp_dir / "bin").exists(), "bin directory missing")
+            self.assertTrue((mcp_dir / "venv").exists(), "venv directory missing")
+            self.assertTrue((mcp_dir / "logs").exists(), "logs directory missing")
+
+            # Check server file
+            server_file = mcp_dir / "bin" / "server.py"
+            self.assertTrue(server_file.exists(), "server.py missing")
+            self.assertTrue(os.access(server_file, os.X_OK), "server.py not executable")
+        else:
+            self.skipTest("MCP server not installed")
+
+    def test_no_manual_configuration(self):
+        """Test that server doesn't use manual configuration."""
+        config_file = Path.home() / ".config" / "claude" / "claude_desktop_config.json"
+
+        if config_file.exists():
+            with open(config_file, 'r') as f:
+                config = json.load(f)
+
+            if 'mcpServers' in config:
+                msg = "Manual configuration found (should use auto-discovery)"
+                self.assertNotIn('code-search', config['mcpServers'], msg)
+
+
+class TestIntegration(unittest.TestCase):
+    """Integration tests with actual functionality."""
+
+    def test_with_real_database(self):
+        """Test with the actual project database if it exists."""
+        # Try to find the real database
+        db_path = Path("/app/.code_index.db")
+        if not db_path.exists():
+            db_path = Path.cwd().parent.parent / ".code_index.db"
+
+        if db_path.exists():
+            try:
+                searcher = CodeSearcher(str(db_path))
+
+                # Search for something that should exist
+                result = searcher.search("CodeIndexer", search_type="name")
+                self.assertTrue(result["success"])
+                self.assertGreater(result["count"], 0)
+
+                # Get stats
+                stats = searcher.get_stats()
+                if stats["success"]:
+                    self.assertGreater(stats["stats"]["total_symbols"], 0)
+                else:
+                    # Old database format without indexed_at is OK
+                    self.assertIn("no such column: indexed_at", stats.get("error", ""))
+            except Exception as e:
+                self.skipTest(f"Integration test failed: {e}")
+        else:
+            self.skipTest("No real database found for integration test")
 
 
 class TestMCPEnvironment(unittest.TestCase):
@@ -322,38 +310,7 @@ class TestMCPEnvironment(unittest.TestCase):
             mcp_search_server.__file__ = original_file
 
 
-class TestIntegration(unittest.TestCase):
-    """Integration tests with actual database."""
-
-    def test_with_real_database(self):
-        """Test with the actual project database if it exists."""
-        # Try to find the real database
-        db_path = Path("/app/.code_index.db")
-        if not db_path.exists():
-            db_path = Path.cwd().parent / ".code_index.db"
-
-        if db_path.exists():
-            try:
-                searcher = CodeSearcher(str(db_path))
-
-                # Search for something that should exist
-                result = searcher.search("CodeIndexer", search_type="name")
-                self.assertTrue(result["success"])
-                self.assertGreater(result["count"], 0)
-
-                # Get stats - skip if metadata table doesn't exist
-                stats = searcher.get_stats()
-                if stats["success"]:
-                    self.assertGreater(stats["stats"]["total_symbols"], 0)
-                else:
-                    # Old database format without metadata table is OK
-                    self.assertIn("no such table: metadata", stats.get("error", ""))
-            except Exception as e:
-                self.skipTest(f"Integration test failed: {e}")
-        else:
-            self.skipTest("No real database found for integration test")
-
-
+# Test runner
 if __name__ == "__main__":
     # Run tests with more verbosity
     unittest.main(verbosity=2)

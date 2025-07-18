@@ -11,146 +11,110 @@
 
 set -euo pipefail
 
-# Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-NC='\033[0m' # No Color
+echo "Installing MCP Code Search Server (Proper Structure)..."
+echo "===================================================="
 
-echo -e "${GREEN}Installing MCP Code Search Server...${NC}"
-
-# Note: MCP CLI is not required for the server to work with Claude Desktop
-
-# Get the installation directory
-MCP_DIR="$HOME/.claude/mcp/servers/code-search"
-echo -e "${YELLOW}Installation directory: $MCP_DIR${NC}"
-
-# Create directory structure
-mkdir -p "$MCP_DIR"
-mkdir -p "$MCP_DIR/logs"
-
-# Copy the server file
-echo "Copying server files..."
-cp mcp_search_server.py "$MCP_DIR/"
-
-# Create a simple test script
-cat > "$MCP_DIR/test_server.py" << 'EOF'
-#!/usr/bin/env python3
-"""Test the MCP code search server installation."""
-
-import sys
-import os
-
-# Add the server directory to Python path
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-
-try:
-    import mcp_search_server
-    print("✓ Server module imported successfully")
-
-    # Test that the CodeSearcher class exists
-    searcher_class = getattr(mcp_search_server, 'CodeSearcher', None)
-    if searcher_class:
-        print("✓ CodeSearcher class found")
-    else:
-        print("✗ CodeSearcher class not found")
-        sys.exit(1)
-
-    print("\nServer installation verified successfully!")
-
-except Exception as e:
-    print(f"✗ Error: {e}")
-    sys.exit(1)
-EOF
-
-chmod +x "$MCP_DIR/test_server.py"
-
-# Test the installation
-echo -e "\n${YELLOW}Testing installation...${NC}"
-# Try to use venv Python if available, otherwise system Python
-PYTHON_BIN="python3"
-if [ -f "/home/dhalem/github/claude_template/venv/bin/python3" ]; then
-    PYTHON_BIN="/home/dhalem/github/claude_template/venv/bin/python3"
-fi
-
-if $PYTHON_BIN "$MCP_DIR/test_server.py"; then
-    echo -e "${GREEN}✓ Installation test passed${NC}"
-else
-    echo -e "${RED}✗ Installation test failed${NC}"
+# Check if running from correct directory
+if [ ! -f "mcp_search_server.py" ]; then
+    echo "Error: mcp_search_server.py not found in current directory"
+    echo "Please run this script from the indexing directory"
     exit 1
 fi
 
-# Create configuration for Claude Desktop
-CONFIG_FILE="$HOME/.config/claude/claude_desktop_config.json"
-mkdir -p "$(dirname "$CONFIG_FILE")"
+# Target directory - MUST follow this structure for auto-discovery
+TARGET_DIR="$HOME/.claude/mcp/code-search"
+TARGET_BIN="$TARGET_DIR/bin"
+TARGET_SRC="$TARGET_DIR/src"
 
-echo -e "\n${YELLOW}Updating Claude Desktop configuration...${NC}"
-
-# Check if config exists and has mcpServers
-if [ -f "$CONFIG_FILE" ]; then
-    # Backup existing config
-    cp "$CONFIG_FILE" "$CONFIG_FILE.backup.$(date +%Y%m%d_%H%M%S)"
-
-    # Check if the server is already configured
-    if grep -q '"code-search"' "$CONFIG_FILE"; then
-        echo -e "${YELLOW}Code search server already configured. Updating...${NC}"
-        # Remove existing code-search configuration
-        $PYTHON_BIN -c "
-import json
-import sys
-
-with open('$CONFIG_FILE', 'r') as f:
-    config = json.load(f)
-
-if 'mcpServers' in config and 'code-search' in config['mcpServers']:
-    del config['mcpServers']['code-search']
-
-with open('$CONFIG_FILE', 'w') as f:
-    json.dump(config, f, indent=2)
-"
-    fi
-else
-    # Create new config
-    echo '{"mcpServers": {}}' > "$CONFIG_FILE"
+# Check if MCP directory exists
+if [ ! -d "$TARGET_DIR" ]; then
+    echo "Creating MCP code-search directory structure..."
+    mkdir -p "$TARGET_BIN" "$TARGET_SRC" "$TARGET_DIR/logs"
 fi
 
-# Add our server to the config
-$PYTHON_BIN -c "
+# Backup existing server if it exists
+if [ -f "$TARGET_BIN/server.py" ]; then
+    BACKUP_NAME="server.py.backup.$(date +%Y%m%d_%H%M%S)"
+    echo "Backing up existing server to: $BACKUP_NAME"
+    cp "$TARGET_BIN/server.py" "$TARGET_BIN/$BACKUP_NAME"
+fi
+
+# Copy the server - MUST be named server.py in bin/
+echo "Installing server to correct location..."
+cp mcp_search_server.py "$TARGET_BIN/server.py"
+chmod +x "$TARGET_BIN/server.py"
+
+# Since code-search doesn't have separate src files, create empty __init__.py
+touch "$TARGET_SRC/__init__.py"
+
+# Create or update the MCP venv - MUST use server's own venv
+echo "Setting up MCP virtual environment..."
+if [ ! -d "$TARGET_DIR/venv" ]; then
+    python3 -m venv "$TARGET_DIR/venv"
+fi
+
+# Always update dependencies
+echo "Installing dependencies..."
+"$TARGET_DIR/venv/bin/pip" install --upgrade pip >/dev/null 2>&1
+
+# Install MCP and other dependencies
+"$TARGET_DIR/venv/bin/pip" install mcp >/dev/null 2>&1 || {
+    echo "Warning: Failed to install mcp package"
+}
+
+# Remove any manual configuration from claude_desktop_config.json
+CONFIG_FILE="$HOME/.config/claude/claude_desktop_config.json"
+if [ -f "$CONFIG_FILE" ]; then
+    echo "Cleaning up manual configuration..."
+    python3 -c "
 import json
-import sys
 import os
 
 config_file = '$CONFIG_FILE'
-mcp_dir = '$MCP_DIR'
+if os.path.exists(config_file):
+    with open(config_file, 'r') as f:
+        config = json.load(f)
 
-with open(config_file, 'r') as f:
-    config = json.load(f)
+    if 'mcpServers' in config and 'code-search' in config['mcpServers']:
+        del config['mcpServers']['code-search']
+        print('Removed manual code-search configuration')
 
-if 'mcpServers' not in config:
-    config['mcpServers'] = {}
+        # If mcpServers is now empty, remove it
+        if not config['mcpServers']:
+            del config['mcpServers']
 
-python_bin = '$PYTHON_BIN'
-
-config['mcpServers']['code-search'] = {
-    'command': python_bin,
-    'args': [os.path.join(mcp_dir, 'mcp_search_server.py')],
-    'env': {}
-}
-
-with open(config_file, 'w') as f:
-    json.dump(config, f, indent=2)
-
-print('✓ Configuration updated successfully')
+        with open(config_file, 'w') as f:
+            json.dump(config, f, indent=2)
 "
+fi
 
-echo -e "\n${GREEN}Installation complete!${NC}"
-echo -e "\nThe MCP Code Search Server has been installed and configured."
-echo -e "\n${YELLOW}Available tools:${NC}"
-echo "  - search_code: Search for code symbols by name, content, or file path"
-echo "  - list_symbols: List all symbols of a specific type"
-echo "  - get_search_stats: Get statistics about the code index database"
-echo -e "\n${YELLOW}Next steps:${NC}"
-echo "1. Make sure your code indexer is running (./start-indexer.sh)"
-echo "2. Restart Claude Desktop to load the new server"
-echo "3. The code search tools will be available in Claude"
-echo -e "\n${YELLOW}Logs are available at:${NC} $MCP_DIR/logs/"
+# Kill existing server processes to force reload
+echo "Stopping any existing code-search servers..."
+pkill -f "mcp/servers/code-search" 2>/dev/null || true
+pkill -f "mcp/code-search/bin/server.py" 2>/dev/null || true
+
+echo ""
+echo "Installation complete!"
+echo "====================="
+echo ""
+echo "The MCP code-search server has been installed with the correct structure:"
+echo "  Server: $TARGET_BIN/server.py"
+echo "  Venv: $TARGET_DIR/venv/"
+echo "  Logs: $TARGET_DIR/logs/"
+echo ""
+echo "Claude Desktop will auto-discover the server at startup."
+echo ""
+echo "To use the server:"
+echo "1. Restart Claude Desktop (completely exit and restart)"
+echo "2. The server will load automatically"
+echo "3. Tools will be available as:"
+echo "   - mcp__code-search__search_code"
+echo "   - mcp__code-search__list_symbols"
+echo "   - mcp__code-search__get_search_stats"
+echo ""
+echo "To verify installation:"
+echo "  ls -la $TARGET_DIR/"
+echo ""
+echo "To check logs:"
+echo "  tail -f $TARGET_DIR/logs/server_*.log"
+echo ""
