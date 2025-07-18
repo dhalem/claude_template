@@ -218,10 +218,10 @@ class CodeSearcher:
             cursor = conn.execute("SELECT COUNT(DISTINCT file_path) FROM symbols")
             stats["total_files"] = cursor.fetchone()[0]
 
-            # Database info
-            cursor = conn.execute("SELECT indexed_at FROM metadata ORDER BY indexed_at DESC LIMIT 1")
+            # Get last indexed time from symbols table
+            cursor = conn.execute("SELECT MAX(indexed_at) FROM symbols")
             row = cursor.fetchone()
-            if row:
+            if row and row[0]:
                 stats["last_indexed"] = row[0]
 
             conn.close()

@@ -19,12 +19,7 @@ NC='\033[0m' # No Color
 
 echo -e "${GREEN}Installing MCP Code Search Server...${NC}"
 
-# Check if MCP is installed
-if ! command -v mcp &> /dev/null; then
-    echo -e "${RED}Error: MCP is not installed${NC}"
-    echo "Please install MCP first: npm install -g @modelcontextprotocol/cli"
-    exit 1
-fi
+# Note: MCP CLI is not required for the server to work with Claude Desktop
 
 # Get the installation directory
 MCP_DIR="$HOME/.claude/mcp/servers/code-search"
@@ -72,7 +67,13 @@ chmod +x "$MCP_DIR/test_server.py"
 
 # Test the installation
 echo -e "\n${YELLOW}Testing installation...${NC}"
-if python3 "$MCP_DIR/test_server.py"; then
+# Try to use venv Python if available, otherwise system Python
+PYTHON_BIN="python3"
+if [ -f "/home/dhalem/github/claude_template/venv/bin/python3" ]; then
+    PYTHON_BIN="/home/dhalem/github/claude_template/venv/bin/python3"
+fi
+
+if $PYTHON_BIN "$MCP_DIR/test_server.py"; then
     echo -e "${GREEN}✓ Installation test passed${NC}"
 else
     echo -e "${RED}✗ Installation test failed${NC}"
@@ -94,7 +95,7 @@ if [ -f "$CONFIG_FILE" ]; then
     if grep -q '"code-search"' "$CONFIG_FILE"; then
         echo -e "${YELLOW}Code search server already configured. Updating...${NC}"
         # Remove existing code-search configuration
-        python3 -c "
+        $PYTHON_BIN -c "
 import json
 import sys
 
@@ -114,7 +115,7 @@ else
 fi
 
 # Add our server to the config
-python3 -c "
+$PYTHON_BIN -c "
 import json
 import sys
 import os
@@ -128,8 +129,10 @@ with open(config_file, 'r') as f:
 if 'mcpServers' not in config:
     config['mcpServers'] = {}
 
+python_bin = '$PYTHON_BIN'
+
 config['mcpServers']['code-search'] = {
-    'command': 'python3',
+    'command': python_bin,
     'args': [os.path.join(mcp_dir, 'mcp_search_server.py')],
     'env': {}
 }
