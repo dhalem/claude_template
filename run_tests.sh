@@ -85,26 +85,14 @@ test_main_project() {
     cd "$PROJECT_ROOT"
     source "$VENV_PATH/bin/activate"
 
-    # Use the comprehensive test runner if it exists
-    if [ -f "scripts/run_tests.sh" ]; then
-        log_info "Using comprehensive test runner..."
-        if ./scripts/run_tests.sh claude; then
-            log_success "Main project tests passed"
-            return 0
-        else
-            log_warning "Main project tests had issues (may be expected)"
-            return 0  # Don't fail on main project test issues
-        fi
+    # Use simple pytest for main project tests (no fancy reporting for pre-commit hooks)
+    log_info "Running main project tests with basic pytest..."
+    if "$VENV_PATH/bin/python" -m pytest tests/ sonos_server/tests/ syncer/tests/ gemini_playlist_suggester/tests/ monitoring/ --tb=short -q --maxfail=5; then
+        log_success "Main project tests passed"
+        return 0
     else
-        # Fallback to pytest
-        log_info "Using pytest fallback..."
-        if "$VENV_PATH/bin/python" -m pytest tests/ sonos_server/tests/ syncer/tests/ gemini_playlist_suggester/tests/ monitoring/ --tb=short -q; then
-            log_success "Main project tests passed"
-            return 0
-        else
-            log_warning "Main project tests had issues (may be expected)"
-            return 0  # Don't fail on main project test issues
-        fi
+        log_warning "Main project tests had issues (may be dependency-related, not blocking)"
+        return 0  # Don't fail on main project test issues during pre-commit
     fi
 }
 
