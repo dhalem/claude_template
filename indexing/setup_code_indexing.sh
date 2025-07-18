@@ -3,24 +3,26 @@
 # Setup script for Tree-sitter and LSP code indexing
 # This provides fast function/code search with automatic index updates
 
-set -e
+set -euo pipefail
 
 echo "Setting up code indexing for Spotidal project..."
 
 # Check if running in virtual environment
-if [[ "$VIRTUAL_ENV" == "" ]]; then
+if [[ "${VIRTUAL_ENV:-}" == "" ]]; then
     echo "Warning: Not in a virtual environment. Creating one..."
     python3 -m venv venv
     source venv/bin/activate
 fi
 
-# Install Python LSP server and plugins
-echo "Installing Python LSP server..."
-pip install python-lsp-server[all] python-lsp-ruff pylsp-mypy
-
-# Install tree-sitter and Python bindings
-echo "Installing tree-sitter..."
-pip install tree-sitter tree-sitter-languages
+# Install dependencies from requirements file
+echo "Installing dependencies..."
+if [[ -f "requirements.txt" ]]; then
+    pip install -r requirements.txt
+else
+    echo "Warning: requirements.txt not found, installing basic dependencies..."
+    pip install python-lsp-server[all] python-lsp-ruff pylsp-mypy
+    pip install tree-sitter tree-sitter-languages
+fi
 
 # Install pyright for advanced type checking (optional but recommended)
 echo "Installing pyright..."

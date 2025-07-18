@@ -24,8 +24,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
-# Add the parent directory to path
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__ if '__file__' in globals() else sys.argv[0]))))
+# Test the local MCP server
+current_dir = os.path.dirname(os.path.abspath(__file__ if '__file__' in globals() else sys.argv[0]))
 
 
 class TestMCPCodeReviewServer(unittest.TestCase):
@@ -63,7 +63,7 @@ if '__file__' in globals():
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(sys.argv[0]))))
 
 try:
-    import indexing.mcp_code_review_server_v2 as server_module
+    import mcp_review_server as server_module
     logger.info("SUCCESS: Module imported without NameError")
     logger.info(f"Module has main: {hasattr(server_module, 'main')}")
 except NameError as e:
@@ -100,7 +100,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(sys.argv[0]))
 
 async def test_server():
     try:
-        from indexing.mcp_code_review_server_v2 import main
+        from mcp_review_server import main
 
         # Create a task for main but cancel it immediately
         # This tests that the server can at least start initializing
@@ -135,7 +135,7 @@ sys.exit(asyncio.run(test_server()))
     def test_mcp_protocol_structure(self):
         """Test that the server follows MCP protocol structure."""
         # Import the module
-        import indexing.mcp_code_review_server_v2 as server_module
+        import mcp_review_server as server_module
 
         # Check required imports and functions
         self.assertTrue(hasattr(server_module, 'Server'))
@@ -150,7 +150,7 @@ sys.exit(asyncio.run(test_server()))
     def test_gemini_client_integration(self):
         """Test that GeminiClient is properly integrated."""
         # This tests that the imports work correctly
-        import indexing.mcp_code_review_server_v2 as server_module
+        import mcp_review_server as server_module
 
         # GeminiClient should be imported
         self.assertTrue(hasattr(server_module, 'GeminiClient'))
@@ -179,12 +179,12 @@ from unittest.mock import patch, MagicMock
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(sys.argv[0]))))
 
 async def test_tool_definition():
-    from indexing.mcp_code_review_server_v2 import main
+    from mcp_review_server import main
 
     # Mock the Server class to capture tool registrations
     tools_registered = []
 
-    with patch('indexing.mcp_code_review_server_v2.Server') as MockServer:
+    with patch('mcp_review_server.Server') as MockServer:
         mock_server = MagicMock()
         MockServer.return_value = mock_server
 
@@ -202,7 +202,7 @@ async def test_tool_definition():
         mock_server.tool = tool_decorator
 
         # Mock stdio_server to prevent actual server start
-        with patch('indexing.mcp_code_review_server_v2.stdio_server'):
+        with patch('mcp_review_server.stdio_server'):
             # Call main to trigger tool registration
             task = asyncio.create_task(main())
             await asyncio.sleep(0.1)
@@ -251,7 +251,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(sys.argv[0]))
 
 # Test importing with missing dependencies
 try:
-    import indexing.mcp_code_review_server_v2 as server_module
+    import mcp_review_server as server_module
 
     # The module should handle missing API keys gracefully
     if hasattr(server_module, 'GeminiClient'):
@@ -274,7 +274,7 @@ except Exception as e:
     def test_file_path_handling(self):
         """Test that file paths are handled correctly."""
         # Test the path resolution after __file__ fix
-        import indexing.mcp_code_review_server_v2 as server_module
+        import mcp_review_server as server_module
 
         # The module should have resolved its directory correctly
         # even if __file__ was not available during import
@@ -302,7 +302,7 @@ class TestMCPInterface(unittest.TestCase):
         server_path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.abspath(__file__ if '__file__' in globals() else sys.argv[0]))),
             "indexing",
-            "mcp_code_review_server_v2.py"
+            "mcp_review_server.py"
         )
 
         # Check the server file exists
@@ -333,7 +333,7 @@ class TestMCPInterface(unittest.TestCase):
         server_src = os.path.join(
             os.path.dirname(os.path.dirname(os.path.abspath(__file__ if '__file__' in globals() else sys.argv[0]))),
             "indexing",
-            "mcp_code_review_server_v2.py"
+            "mcp_review_server.py"
         )
         server_dst = os.path.join(bin_dir, "server.py")
         shutil.copy(server_src, server_dst)

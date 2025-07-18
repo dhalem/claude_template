@@ -2,7 +2,7 @@
 # Start the code indexer in Docker
 # Automatically generates unique container names based on the directory
 
-set -e
+set -euo pipefail
 
 # Get the absolute path to the indexing directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

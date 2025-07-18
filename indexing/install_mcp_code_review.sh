@@ -15,8 +15,8 @@ echo "Installing MCP Code Review Server..."
 echo "====================================="
 
 # Check if running from correct directory
-if [ ! -f "mcp_code_review_server_v2.py" ]; then
-    echo "Error: mcp_code_review_server_v2.py not found in current directory"
+if [ ! -f "mcp_review_server.py" ]; then
+    echo "Error: mcp_review_server.py not found in current directory"
     echo "Please run this script from the indexing directory"
     exit 1
 fi
@@ -41,34 +41,34 @@ fi
 
 # Copy the new server
 echo "Installing new server..."
-cp mcp_code_review_server_v2.py "$TARGET_BIN/server.py"
+cp mcp_review_server.py "$TARGET_BIN/server.py"
 chmod +x "$TARGET_BIN/server.py"
 
 # Always update src files
 echo "Copying required source files..."
 
-# Check if reviewer src exists
-REVIEWER_SRC="../reviewer/src"
-if [ -d "$REVIEWER_SRC" ]; then
-    cp "$REVIEWER_SRC/file_collector.py" "$TARGET_SRC/" || {
+# Check if local src exists
+LOCAL_SRC="src"
+if [ -d "$LOCAL_SRC" ]; then
+    cp "$LOCAL_SRC/file_collector.py" "$TARGET_SRC/" || {
         echo "Error: Failed to copy file_collector.py"
         exit 1
     }
-    cp "$REVIEWER_SRC/gemini_client.py" "$TARGET_SRC/" || {
+    cp "$LOCAL_SRC/gemini_client.py" "$TARGET_SRC/" || {
         echo "Error: Failed to copy gemini_client.py"
         exit 1
     }
-    cp "$REVIEWER_SRC/review_formatter.py" "$TARGET_SRC/" || {
+    cp "$LOCAL_SRC/review_formatter.py" "$TARGET_SRC/" || {
         echo "Error: Failed to copy review_formatter.py"
         exit 1
     }
     echo "Source files copied successfully"
 else
-    echo "Error: Reviewer source files not found at $REVIEWER_SRC"
+    echo "Error: Local source files not found at $LOCAL_SRC"
     echo "Please ensure these files exist:"
-    echo "  - $REVIEWER_SRC/file_collector.py"
-    echo "  - $REVIEWER_SRC/gemini_client.py"
-    echo "  - $REVIEWER_SRC/review_formatter.py"
+    echo "  - $LOCAL_SRC/file_collector.py"
+    echo "  - $LOCAL_SRC/gemini_client.py"
+    echo "  - $LOCAL_SRC/review_formatter.py"
     exit 1
 fi
 
@@ -80,12 +80,17 @@ fi
 
 # Always update dependencies
 "$TARGET_DIR/venv/bin/pip" install --upgrade pip
-"$TARGET_DIR/venv/bin/pip" install mcp google-generativeai
 
-# Install any additional dependencies
-if [ -f "../reviewer/requirements.txt" ]; then
-    echo "Installing additional dependencies..."
+# Install dependencies from requirements file if available
+if [ -f "requirements.txt" ]; then
+    echo "Installing dependencies from requirements.txt..."
+    "$TARGET_DIR/venv/bin/pip" install -r "requirements.txt"
+elif [ -f "../reviewer/requirements.txt" ]; then
+    echo "Installing dependencies from reviewer requirements.txt..."
     "$TARGET_DIR/venv/bin/pip" install -r "../reviewer/requirements.txt"
+else
+    echo "Installing basic dependencies..."
+    "$TARGET_DIR/venv/bin/pip" install mcp google-generativeai
 fi
 
 echo ""
