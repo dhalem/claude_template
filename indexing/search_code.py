@@ -231,7 +231,7 @@ class CodeSearcher:
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Search code symbols in Spotidal project")
+    parser = argparse.ArgumentParser(description="Search code symbols in the project")
     parser.add_argument("query", nargs="?", help="Search query (supports * and ? wildcards)")
     parser.add_argument(
         "-t", "--type", choices=["function", "class", "method", "variable"], help="Filter by symbol type"

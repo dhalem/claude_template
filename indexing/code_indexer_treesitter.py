@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Tree-sitter based code indexer for Spotidal project.
+"""Tree-sitter based code indexer for Python projects.
 
 Provides fast function/class/symbol search with automatic updates.
 """
@@ -49,7 +49,8 @@ class CodeIndexer:
             self.parser.set_language(tree_sitter_languages.get_language("python"))
 
         # Directories to index
-        self.index_dirs = ["sonos_server", "syncer", "syncer_v2", "gemini_playlist_suggester", "monitoring"]
+        # Default to indexing the current directory
+        self.index_dirs = ["."]
 
         # File extensions to index
         self.extensions = {".py", ".pyx", ".pyi"}
