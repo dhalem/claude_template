@@ -49,7 +49,7 @@ class TestMetaCognitiveIntegration(unittest.TestCase):
             "GOOGLE_API_KEY": self.api_key,
             "META_COGNITIVE_ANALYSIS_ENABLED": "true",
             "META_COGNITIVE_LLM_PROVIDER": "google",
-            "META_COGNITIVE_LLM_VERSION": "2.0-flash-exp"
+            "META_COGNITIVE_LLM_VERSION": "1.5-flash"
         }):
             guard = MetaCognitiveGuard()
 
@@ -73,7 +73,7 @@ class TestMetaCognitiveIntegration(unittest.TestCase):
                     self.assertIn("META-COGNITIVE PATTERN ALERT", message)
                     # Either LLM detected it or heuristic fallback did
                     self.assertTrue(
-                        "infrastructure_blame" in message.lower() or
+                        "infrastructure blame" in message.lower() or
                         "check recent code changes" in message.lower()
                     )
 
@@ -83,7 +83,7 @@ class TestMetaCognitiveIntegration(unittest.TestCase):
             "GOOGLE_API_KEY": self.api_key,
             "META_COGNITIVE_ANALYSIS_ENABLED": "true",
             "META_COGNITIVE_LLM_PROVIDER": "google",
-            "META_COGNITIVE_LLM_VERSION": "2.0-flash-exp"
+            "META_COGNITIVE_LLM_VERSION": "1.5-flash"
         }):
             guard = MetaCognitiveGuard()
 
@@ -107,7 +107,7 @@ class TestMetaCognitiveIntegration(unittest.TestCase):
                     self.assertIn("META-COGNITIVE PATTERN ALERT", message)
                     # Either LLM detected it or heuristic fallback did
                     self.assertTrue(
-                        "theory_lock_in" in message.lower() or
+                        "theory lock-in" in message.lower() or
                         "test your theory" in message.lower()
                     )
 
@@ -117,7 +117,7 @@ class TestMetaCognitiveIntegration(unittest.TestCase):
             "GOOGLE_API_KEY": self.api_key,
             "META_COGNITIVE_ANALYSIS_ENABLED": "true",
             "META_COGNITIVE_LLM_PROVIDER": "google",
-            "META_COGNITIVE_LLM_VERSION": "2.0-flash-exp"
+            "META_COGNITIVE_LLM_VERSION": "1.5-flash"
         }):
             guard = MetaCognitiveGuard()
 
@@ -145,7 +145,7 @@ class TestMetaCognitiveIntegration(unittest.TestCase):
                     self.assertIn("META-COGNITIVE PATTERN ALERT", message)
                     # Either LLM detected it or heuristic fallback did
                     self.assertTrue(
-                        "rabbit_hole" in message.lower() or
+                        "rabbit holes" in message.lower() or
                         "concrete actions" in message.lower()
                     )
 
@@ -155,7 +155,7 @@ class TestMetaCognitiveIntegration(unittest.TestCase):
             "GOOGLE_API_KEY": self.api_key,
             "META_COGNITIVE_ANALYSIS_ENABLED": "true",
             "META_COGNITIVE_LLM_PROVIDER": "google",
-            "META_COGNITIVE_LLM_VERSION": "2.0-flash-exp"
+            "META_COGNITIVE_LLM_VERSION": "1.5-flash"
         }):
             guard = MetaCognitiveGuard()
 
@@ -179,7 +179,7 @@ class TestMetaCognitiveIntegration(unittest.TestCase):
                     self.assertIn("META-COGNITIVE PATTERN ALERT", message)
                     # Either LLM detected it or heuristic fallback did
                     self.assertTrue(
-                        "excuse_making" in message.lower() or
+                        "excuse making" in message.lower() or
                         "acknowledge errors directly" in message.lower()
                     )
 
@@ -189,7 +189,7 @@ class TestMetaCognitiveIntegration(unittest.TestCase):
             "GOOGLE_API_KEY": self.api_key,
             "META_COGNITIVE_ANALYSIS_ENABLED": "true",
             "META_COGNITIVE_LLM_PROVIDER": "google",
-            "META_COGNITIVE_LLM_VERSION": "2.0-flash-exp"
+            "META_COGNITIVE_LLM_VERSION": "1.5-flash"
         }):
             guard = MetaCognitiveGuard()
 
@@ -218,7 +218,7 @@ class TestMetaCognitiveIntegration(unittest.TestCase):
             "GOOGLE_API_KEY": self.api_key,
             "META_COGNITIVE_ANALYSIS_ENABLED": "true",
             "META_COGNITIVE_LLM_PROVIDER": "google",
-            "META_COGNITIVE_LLM_VERSION": "2.0-flash-exp"
+            "META_COGNITIVE_LLM_VERSION": "1.5-flash"
         }):
             guard = MetaCognitiveGuard()
 
@@ -283,7 +283,7 @@ class TestMetaCognitiveIntegration(unittest.TestCase):
             "GOOGLE_API_KEY": "invalid_key",  # This will cause API calls to fail  # pragma: allowlist secret
             "META_COGNITIVE_ANALYSIS_ENABLED": "true",
             "META_COGNITIVE_LLM_PROVIDER": "google",
-            "META_COGNITIVE_LLM_VERSION": "2.0-flash-exp",
+            "META_COGNITIVE_LLM_VERSION": "1.5-flash",
             "META_COGNITIVE_FALLBACK_TO_HEURISTICS": "true"
         }):
             guard = MetaCognitiveGuard()

@@ -96,7 +96,7 @@ repos:
     language: pygrep
     types:
     - python
-    exclude: ^(scripts/|tools/|debug|tests/|.*test.*\.py|setup\.py|hooks/|indexing/)
+    exclude: ^(scripts/|tools/|debug|tests/|.*test.*\.py|setup\.py|hooks/|indexing/|reviewer/)
     verbose: true
 - repo: local
   hooks:

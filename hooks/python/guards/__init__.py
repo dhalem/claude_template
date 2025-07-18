@@ -4,7 +4,7 @@ REMINDER: Update HOOKS.md when adding/removing guards from __all__!
 """
 
 from .assumption_detection_guard import AssumptionDetectionGuard
-from .awareness_guards import DirectoryAwarenessGuard, PipInstallGuard, TestSuiteEnforcementGuard
+from .awareness_guards import DirectoryAwarenessGuard, PipInstallGuard  # TestSuiteEnforcementGuard disabled
 from .conversation_log_guard import ConversationLogGuard
 from .docker_env_guard import DockerEnvGuard
 from .docker_guards import ContainerStateGuard, DockerRestartGuard, DockerWithoutComposeGuard
@@ -36,7 +36,7 @@ __all__ = [
     "DirectoryAwarenessGuard",
     "PipInstallGuard",
     "PythonVenvGuard",
-    "TestSuiteEnforcementGuard",
+    # "TestSuiteEnforcementGuard",  # Disabled per user request
     "ContainerRebuildReminder",
     "DatabaseSchemaReminder",
     "TempFileLocationGuard",
