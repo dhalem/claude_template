@@ -5,7 +5,7 @@
 
 set -euo pipefail
 
-echo "Setting up code indexing for Spotidal project..."
+echo "Setting up code indexing for project..."
 
 # Check if running in virtual environment
 if [[ "${VIRTUAL_ENV:-}" == "" ]]; then
@@ -62,16 +62,15 @@ EOF
 cat > pyrightconfig.json << 'EOF'
 {
     "include": [
-        "sonos_server",
-        "syncer",
-        "syncer_v2",
-        "gemini_playlist_suggester",
-        "monitoring"
+        "."
     ],
     "exclude": [
         "**/node_modules",
         "**/__pycache__",
+        "**/.venv",
         "**/venv",
+        "**/build",
+        "**/dist",
         "archive",
         "temp"
     ],

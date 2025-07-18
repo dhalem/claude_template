@@ -151,11 +151,12 @@ class CodeIndexer:
                         file_path=str(file_path),
                         line_number=node.lineno,
                         column=node.col_offset,
+                        parent=self.current_class,  # Set parent for nested classes
                         docstring=ast.get_docstring(node),
                     )
                     self.symbols.append(symbol)
 
-                    # Visit methods
+                    # Visit nested classes and methods
                     old_class = self.current_class
                     self.current_class = node.name
                     self.generic_visit(node)

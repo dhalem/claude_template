@@ -13,14 +13,13 @@ import unittest
 from pathlib import Path
 from unittest.mock import Mock, patch
 
-# Add parent directory to path for imports
+# Add paths for imports
 parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, parent_dir)
-sys.path.insert(0, os.path.dirname(parent_dir))  # For other modules if needed
+sys.path.insert(0, os.path.join(parent_dir, 'src'))
 
 import mcp_search_server
-
-from src.code_searcher import CodeSearcher
+from code_searcher import CodeSearcher
 
 
 class TestCodeSearcher(unittest.TestCase):

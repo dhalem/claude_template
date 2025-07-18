@@ -166,7 +166,7 @@ class FileCollector:
 
         for encoding in encodings:
             try:
-                with open(file_path, 'r', encoding=encoding) as f:
+                with open(file_path, encoding=encoding) as f:
                     content = f.read()
 
                 # Check if this looks like a binary file
@@ -206,7 +206,7 @@ class FileCollector:
 
         if gitignore_path.exists():
             try:
-                with open(gitignore_path, 'r', encoding='utf-8') as f:
+                with open(gitignore_path, encoding='utf-8') as f:
                     for line in f:
                         line = line.strip()
                         if line and not line.startswith('#'):
@@ -222,11 +222,7 @@ class FileCollector:
         """Check if path matches any gitignore pattern."""
         path_str = str(path)
 
-        for pattern in patterns:
-            if self._match_pattern(path_str, pattern):
-                return True
-
-        return False
+        return any(self._match_pattern(path_str, pattern) for pattern in patterns)
 
     def _match_pattern(self, path: str, pattern: str) -> bool:
         """Simple gitignore pattern matching."""
@@ -239,7 +235,8 @@ class FileCollector:
 
         # Handle directory patterns
         if pattern.endswith('/'):
-            regex_pattern = regex_pattern[:-1] + '/?$'
+            # Directory patterns should match the directory and anything inside it
+            regex_pattern = regex_pattern[:-1] + '(/.*)?$'
 
         # Handle absolute patterns
         if pattern.startswith('/'):

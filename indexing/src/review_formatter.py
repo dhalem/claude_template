@@ -65,7 +65,7 @@ class ReviewFormatter:
         # Try provided path first
         if claude_md_path:
             try:
-                with open(claude_md_path, 'r', encoding='utf-8') as f:
+                with open(claude_md_path, encoding='utf-8') as f:
                     self.claude_md_content = f.read()
                     return
             except Exception:
