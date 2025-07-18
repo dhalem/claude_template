@@ -8,7 +8,10 @@
 # GUARDS ARE SAFETY EQUIPMENT - WHEN THEY FIRE, FIX THE PROBLEM THEY FOUND
 # NEVER weaken, disable, or bypass guards - they prevent real harm
 
-"""Unit tests for FileCollector class."""
+"""Unit tests for FileCollector class.
+
+Tests are now automatically run by pre-commit hooks.
+"""
 
 import os
 import sys
