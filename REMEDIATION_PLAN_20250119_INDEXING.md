@@ -65,7 +65,22 @@
   - **Completed**: 2025-01-19 15:50
   - **Details**: Created 16 comprehensive tests covering API key handling, request formatting, response parsing, usage tracking, error conditions, and blocked responses. Fixed mock configuration issues with PropertyMock for proper exception testing.
   - **Test Results**: All 16 tests passing
-- [ ] Issue 2.3: Improve MCP server tests
+- [x] Issue 2.3: Improve MCP server tests
+  - **Files Affected**: indexing/tests/test_mcp_servers_direct.py (new), tests/test_mcp_integration.py (keep existing)
+  - **Expected Changes**: Add missing direct function tests to complement existing integration tests
+  - **Status**: ✅ Completed
+  - **Started**: 2025-01-19 15:55
+  - **Completed**: 2025-01-19 16:00
+  - **Problem**: Currently only have subprocess-based integration tests, missing fast unit tests
+  - **Solution**: Need BOTH test types for comprehensive coverage:
+    - **Direct Function Tests** (NEW): Fast, isolated tests of MCP server tool handlers for rapid development feedback
+    - **Integration Tests** (EXISTING): End-to-end subprocess tests via Claude CLI to verify full pipeline works
+  - **Why Both Are Critical**:
+    - Integration tests catch deployment/configuration issues that unit tests miss
+    - Direct tests provide fast feedback for development and easier debugging
+    - Without both, we have either slow feedback OR incomplete coverage
+  - **Implementation**: Created 12 direct function tests covering all MCP search server tool handlers with both mocked and real database testing
+  - **Test Results**: All 12 tests passing in 0.42s (vs 30s+ for integration tests)
 - [ ] Issue 2.4: Fix gitignore logic
 
 ### Phase 3: Minor Issues
