@@ -56,6 +56,7 @@ class FileCollector:
         self.collected_files: Dict[str, str] = {}
         self.skipped_files: List[str] = []
         self.total_size = 0
+        self.base_directory: Optional[Path] = None
 
     def collect_files(self, directory: str) -> Dict[str, str]:
         """Collect all relevant files from directory.
@@ -78,6 +79,7 @@ class FileCollector:
         self.collected_files = {}
         self.skipped_files = []
         self.total_size = 0
+        self.base_directory = directory_path
 
         # Load .gitignore patterns
         gitignore_patterns = self._load_gitignore(directory_path)
@@ -141,7 +143,8 @@ class FileCollector:
         # Read file content
         content = self._read_file_safely(file_path)
         if content is not None:
-            relative_path = str(file_path.relative_to(file_path.anchor))
+            # Calculate relative path from the base directory being scanned
+            relative_path = str(file_path.relative_to(self.base_directory))
             self.collected_files[relative_path] = content
             self.total_size += len(content)
             logger.debug(f"Collected file: {relative_path}")
