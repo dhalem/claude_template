@@ -234,12 +234,16 @@ class FileCollector:
             return False  # Simplified - don't handle negation for now
 
         # Convert gitignore pattern to regex
-        regex_pattern = pattern.replace('*', '.*').replace('?', '.')
+        # Escape special regex chars except * and ?
+        regex_pattern = re.escape(pattern).replace(r'\*', '.*').replace(r'\?', '.')
 
         # Handle directory patterns
         if pattern.endswith('/'):
             # Directory patterns should match the directory and anything inside it
             regex_pattern = regex_pattern[:-1] + '(/.*)?$'
+        else:
+            # For file patterns, ensure we match to end of filename
+            regex_pattern = regex_pattern + '$'
 
         # Handle absolute patterns
         if pattern.startswith('/'):
