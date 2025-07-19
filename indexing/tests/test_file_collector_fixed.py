@@ -275,6 +275,14 @@ build/*
             # Test directory names that contain pattern substrings
             ("nodejs_project/server.py", "*.js", False),
             ("nodejs_project/app.js", "*.js", True),
+
+            # Directory boundary tests - patterns should match complete directory names only
+            ("/src/rebuild/main.py", "build", False),  # "build" should not match "rebuild"
+            ("/src/rebuild/", "build", False),  # "build" should not match "rebuild/" directory
+            ("/src/build/main.py", "build", True),  # "build" should match "build/"
+            ("/src/build/", "build", True),  # "build" should match "build/" directory
+            ("/src/module_test/file.py", "test", False),  # "test" should not match "module_test"
+            ("/src/test/file.py", "test", True),  # "test" should match "test/"
         ]
 
         for path_str, pattern, expected in test_cases:

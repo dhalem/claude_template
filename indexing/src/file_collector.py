@@ -242,8 +242,8 @@ class FileCollector:
             # Directory patterns should match the directory and anything inside it
             regex_pattern = regex_pattern[:-1] + '(/.*)?$'
         else:
-            # For file patterns, ensure we match to end of filename
-            regex_pattern = regex_pattern + '$'
+            # For file/directory patterns, match at path boundaries (end of string or followed by /)
+            regex_pattern = regex_pattern + '(/|$)'
 
         # Handle absolute patterns
         if pattern.startswith('/'):

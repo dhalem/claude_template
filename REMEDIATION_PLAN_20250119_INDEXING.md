@@ -81,7 +81,19 @@
     - Without both, we have either slow feedback OR incomplete coverage
   - **Implementation**: Created 12 direct function tests covering all MCP search server tool handlers with both mocked and real database testing
   - **Test Results**: All 12 tests passing in 0.42s (vs 30s+ for integration tests)
-- [ ] Issue 2.4: Fix gitignore logic
+- [x] Issue 2.4: Fix gitignore logic
+  - **Files Affected**: indexing/src/file_collector.py
+  - **Expected Changes**: Fix gitignore pattern matching to properly anchor to directory boundaries
+  - **Status**: ✅ Completed
+  - **Started**: 2025-01-19 16:05
+  - **Completed**: 2025-01-19 16:15
+  - **Problem**: Pattern matching incorrectly matches partial path components (e.g., `build` matches `rebuild/`)
+  - **Root Cause**: Regex `(^|/)pattern` matches anywhere in path, not just at directory boundaries
+  - **Solution**: Add proper anchoring to ensure patterns only match complete path components
+  - **Impact**: Files are incorrectly excluded from code review, reducing tool reliability
+  - **Fix Applied**: Changed regex from `pattern + '$'` to `pattern + '(/|$)'` for proper boundary matching
+  - **Test Coverage**: Added 6 new boundary test cases to prevent regression
+  - **Verification**: All existing tests pass + new boundary tests pass
 
 ### Phase 3: Minor Issues
 - [ ] Issue 3.1: Add missing Rule #0 headers
