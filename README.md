@@ -6,6 +6,12 @@
 Please install the Claude development template from https://github.com/dhalem/claude_template into my current project. Follow the Agent Setup section in the README to automatically install all development tools, hooks, and configurations.
 ```
 
+**🔧 For MCP server setup in existing projects, use this prompt:**
+
+```
+Please install the MCP server usage instructions from https://github.com/dhalem/claude_template/blob/main/indexing/MCP_SERVER_USAGE.md into my CLAUDE.md file. Add a section referencing the complete MCP server installation and usage guide. Include instructions for both code-search and code-review MCP servers with their installation commands and troubleshooting steps.
+```
+
 **🧑‍💻 For hook development, use this prompt:**
 
 ```
@@ -89,9 +95,12 @@ python3 indexing/claude_code_search.py --help 2>/dev/null || echo "Code search n
 - **Meta-cognitive guards** - Prevent common AI assistant mistakes
 - **Development workflow automation** - Streamlined AI-assisted coding
 
-### 🔍 Code Intelligence
-- **Fast code search** - Find functions, classes, and patterns instantly
-- **MCP server integration** - Claude Code workspace integration with code-search and code-review tools
+### 🔍 Code Intelligence & MCP Servers
+- **Fast code search** - Find functions, classes, and patterns instantly across any codebase
+- **MCP server integration** - Two powerful Claude Code workspace tools:
+  - **code-search**: Search symbols, content, and files using indexed database
+  - **code-review**: AI-powered code review using Google Gemini with usage tracking
+- **Cross-workspace support** - MCP servers work from any directory once installed
 - **Real-time indexing** - Automatic code discovery and cataloging
 - **Pattern matching** - Find similar implementations with wildcards
 - **Comprehensive MCP testing** - Automated test suite for MCP server verification
@@ -130,23 +139,45 @@ python3 indexing/claude_code_search.py file_symbols "src/models.py"
 # Install MCP servers for Claude Code
 ./install-mcp-servers.sh
 
+# For Claude Code CLI (cross-workspace setup)
+./install-mcp-central.sh
+claude mcp add code-search ~/.claude/mcp/central/venv/bin/python ~/.claude/mcp/central/code-search/server.py
+claude mcp add code-review ~/.claude/mcp/central/venv/bin/python ~/.claude/mcp/central/code-review/server.py
+
 # Test MCP server connection
 claude --debug -p 'hello world'
-# Look for: "MCP server connected successfully" in debug output
+# Look for: "MCP server 'code-search': Connected successfully"
+#           "MCP server 'code-review': Connected successfully"
+
+# Verify servers are registered (CLI only)
+claude mcp list
 
 # Manual server testing (for debugging)
-/home/dhalem/.claude/mcp/central/venv/bin/python \
-  /home/dhalem/.claude/mcp/central/code-search/server.py
+~/.claude/mcp/central/venv/bin/python ~/.claude/mcp/central/code-search/server.py
 ```
 
 **Available MCP servers:**
-- **code-search**: Search symbols across workspaces
-- **code-review**: AI-powered code review with Gemini
+- **code-search**: Search symbols, content, and files across any workspace
+  - Tools: `search_code`, `list_symbols`, `get_search_stats`
+  - Requirements: Code index database (`.code_index.db`)
+- **code-review**: AI-powered comprehensive code review with Google Gemini
+  - Tools: `review_code` with focus areas, model selection, and usage tracking
+  - Requirements: `GEMINI_API_KEY` environment variable
+
+**Key Features:**
+- **Cross-workspace support**: Work from any directory once installed
+- **Protocol compliance**: Uses MCP 2024-11-05 standard
+- **Comprehensive logging**: Debug logs in `~/.claude/mcp/central/*/logs/`
+- **Usage tracking**: Cost estimation and token counting for Gemini reviews
 
 **Troubleshooting MCP:**
+- Check connection: Run `claude --debug -p 'test'` and look for MCP messages
+- Verify registration: `claude mcp list` should show both servers (CLI only)
 - Check logs: `~/.claude/mcp/central/*/logs/server_*.log`
-- Verify environment: `GEMINI_API_KEY` required for code-review
-- Reinstall: Run `./install-mcp-servers.sh` again
+- Environment: `GEMINI_API_KEY` required for code-review server
+- Reinstall: Run `./install-mcp-servers.sh` or `./install-mcp-central.sh`
+
+**📖 Complete documentation: [`indexing/MCP_SERVER_USAGE.md`](indexing/MCP_SERVER_USAGE.md)**
 
 ### Testing
 ```bash
