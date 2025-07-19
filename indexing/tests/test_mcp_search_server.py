@@ -242,16 +242,21 @@ class TestInstallation(unittest.TestCase):
             self.skipTest("MCP server not installed")
 
     def test_no_manual_configuration(self):
-        """Test that server doesn't use manual configuration."""
+        """Test that server doesn't use manual configuration (unless central installation)."""
         config_file = Path.home() / ".config" / "claude" / "claude_desktop_config.json"
 
         if config_file.exists():
             with open(config_file, 'r') as f:
                 config = json.load(f)
 
-            if 'mcpServers' in config:
-                msg = "Manual configuration found (should use auto-discovery)"
-                self.assertNotIn('code-search', config['mcpServers'], msg)
+            if 'mcpServers' in config and 'code-search' in config['mcpServers']:
+                # Check if this is a central installation
+                server_path = config['mcpServers']['code-search'].get('args', [])
+                if server_path and len(server_path) > 0:
+                    is_central = '/.claude/mcp/central/' in server_path[0]
+                    if not is_central:
+                        msg = "Manual configuration found (should use auto-discovery or central installation)"
+                        self.fail(msg)
 
 
 class TestIntegration(unittest.TestCase):

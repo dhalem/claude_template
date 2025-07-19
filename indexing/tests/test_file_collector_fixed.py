@@ -251,6 +251,66 @@ build/*
                 self.assertEqual(result, expected,
                                  f"Pattern '{pattern}' should {'match' if expected else 'not match'} '{path_str}'")
 
+    def test_gitignore_pattern_regression_bugs(self):
+        """Test regression for specific gitignore pattern bugs that caused false matches."""
+        # Regression test for the bug where "*.so" pattern incorrectly matched "server.py"
+        # because the regex "(^|/).*so" matched "so" in "sonos_server"
+        test_cases = [
+            # The bug: *.so pattern incorrectly matching files with "so" in path
+            ("/home/user/sonos_server/server.py", "*.so", False),
+            ("/home/user/sonos_server/config.py", "*.so", False),
+            ("file.so", "*.so", True),  # Should still match actual .so files
+            ("lib/library.so", "*.so", True),  # Should still match .so files in subdirs
+
+            # Other similar edge cases
+            ("server.py", "*.so", False),
+            ("awesome_project/server.py", "*.so", False),
+            ("project/file.so", "*.so", True),
+
+            # Test with other extensions that could have similar issues
+            ("server.py", "*.js", False),
+            ("javascript_code.py", "*.js", False),
+            ("script.js", "*.js", True),
+
+            # Test directory names that contain pattern substrings
+            ("nodejs_project/server.py", "*.js", False),
+            ("nodejs_project/app.js", "*.js", True),
+        ]
+
+        for path_str, pattern, expected in test_cases:
+            with self.subTest(path=path_str, pattern=pattern):
+                result = self.collector._match_pattern(path_str, pattern)
+                self.assertEqual(result, expected,
+                                 f"Regression test failed: Pattern '{pattern}' should {'match' if expected else 'not match'} '{path_str}'")
+
+    def test_relative_path_calculation(self):
+        """Test that file paths are calculated relative to target directory, not filesystem root."""
+        # Create a directory structure
+        test_workspace = self.test_dir / "workspace"
+        src_dir = test_workspace / "src"
+        src_dir.mkdir(parents=True)
+
+        # Create test files
+        main_file = test_workspace / "main.py"
+        src_file = src_dir / "module.py"
+        main_file.write_text("print('main')")
+        src_file.write_text("def function(): pass")
+
+        # Collect files
+        collected = self.collector.collect_files(str(test_workspace))
+
+        # Check that paths are relative to the workspace, not filesystem root
+        collected_paths = set(collected.keys())
+
+        # These should be the relative paths from the workspace
+        expected_paths = {"main.py", "src/module.py"}
+        self.assertEqual(collected_paths, expected_paths)
+
+        # Verify paths don't contain the full filesystem path
+        for path in collected_paths:
+            self.assertFalse(path.startswith('/'), f"Path {path} should be relative, not absolute")
+            self.assertNotIn(str(self.test_dir), path, f"Path {path} should not contain base test directory")
+
     def test_collect_files_empty_directory(self):
         """Test collecting from empty directory."""
         empty_dir = self.test_dir / "empty"
