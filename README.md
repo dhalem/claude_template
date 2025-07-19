@@ -91,9 +91,10 @@ python3 indexing/claude_code_search.py --help 2>/dev/null || echo "Code search n
 
 ### 🔍 Code Intelligence
 - **Fast code search** - Find functions, classes, and patterns instantly
-- **MCP server integration** - Claude Code workspace integration
+- **MCP server integration** - Claude Code workspace integration with code-search and code-review tools
 - **Real-time indexing** - Automatic code discovery and cataloging
 - **Pattern matching** - Find similar implementations with wildcards
+- **Comprehensive MCP testing** - Automated test suite for MCP server verification
 
 ### ✅ Quality Assurance System
 - **15+ pre-commit hooks** - Automated quality and security checks
@@ -149,16 +150,25 @@ claude --debug -p 'hello world'
 
 ### Testing
 ```bash
-# Run all tests
-pytest
+# Run all tests (includes MCP tests)
+./run_tests.sh
 
-# Run specific categories
-pytest -m unit           # Unit tests only
-pytest -m integration    # Integration tests only
-pytest -m "not slow"     # Skip slow tests
+# Run specific test suites
+./run_tests.sh --indexing-only  # Indexing tests only
+./run_tests.sh --mcp-only       # MCP tests only
 
-# Smart test runner (dependency-aware)
-./scripts/run_tests.sh
+# Quick MCP server verification (30 seconds)
+./test_mcp_quick.sh
+
+# Comprehensive MCP testing
+./test_mcp_servers.py
+
+# Standard pytest
+pytest                           # All tests
+pytest -m unit                   # Unit tests only
+pytest -m integration            # Integration tests only
+pytest -m "not slow"             # Skip slow tests
+pytest tests/test_mcp_integration.py -v  # MCP integration tests
 ```
 
 ### Quality Checks

@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "code-search": {
+      "command": "/home/dhalem/github/claude_template/venv/bin/python3",
+      "args": [
+        "/home/dhalem/github/claude_template/indexing/mcp_search_server.py"
+      ]
+    },
+    "code-review": {
+      "command": "/home/dhalem/github/claude_template/venv/bin/python3",
+      "args": [
+        "/home/dhalem/github/claude_template/indexing/mcp_review_server.py"
+      ]
+    }
+  }
+}

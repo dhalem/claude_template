@@ -229,9 +229,23 @@ See `hooks/OVERRIDE_SYSTEM.md` for details.
 This project includes two MCP (Model Context Protocol) servers for Claude Code integration:
 
 ### Installation
+
+**For Claude Desktop**:
 ```bash
 # Install MCP servers to central location
 ./install-mcp-servers.sh
+```
+
+**For Claude Code CLI (Cross-Workspace Support)**:
+```bash
+# Install centrally for all workspaces
+./install-mcp-central.sh
+
+# Register globally (if needed)
+./register-mcp-global.sh
+
+# Verify they work everywhere
+claude mcp list  # Should work from any directory
 ```
 
 This installs:
@@ -242,11 +256,16 @@ This installs:
 ```bash
 # Test if MCP servers are connecting properly
 claude --debug -p 'hello world'
+
+# For automated testing or CI environments, use:
+claude --debug --dangerously-skip-permissions -p 'hello world'
 ```
 
 **Expected output in debug logs:**
 - ✅ `MCP server "code-search": Connected successfully`
 - ✅ `MCP server "code-review": Connected successfully`
+
+**Note**: The `--dangerously-skip-permissions` flag bypasses permission checks and should only be used for testing purposes, not in normal usage.
 
 **Common connection issues:**
 - ❌ `Connection closed` - Server startup failure
@@ -268,11 +287,111 @@ Servers are automatically configured in `~/.config/claude/claude_desktop_config.
 - Requires `GEMINI_API_KEY` environment variable for code-review
 - Logs to `~/.claude/mcp/central/{server}/logs/`
 
-### Troubleshooting
-1. **Check server logs**: `~/.claude/mcp/central/code-*/logs/server_*.log`
-2. **Verify installation**: Run `./install-mcp-servers.sh` again
-3. **Test connection**: Use `claude --debug` command above
-4. **Check permissions**: Ensure central directory is accessible
+### Troubleshooting MCP Connection Issues
+
+#### Critical Discovery: Claude Code CLI vs Desktop Differences
+
+**IMPORTANT**: Claude Code CLI and Claude Desktop handle MCP servers completely differently:
+
+- **Claude Desktop**: Automatically loads `.mcp.json` from project root
+- **Claude Code CLI**: Requires manual server registration using `claude mcp add`
+- **Project config (.mcp.json) takes precedence over global config**
+
+If using Claude Code CLI, you MUST first register servers:
+```bash
+# Check if servers are already configured
+claude mcp list
+
+# If not listed, add them from .mcp.json
+cat .mcp.json | jq -r '.mcpServers | to_entries[] | "claude mcp add \(.key) \(.value.command) \(.value.args | join(" "))"' | bash
+
+# Verify they were added
+claude mcp list
+```
+
+#### Common Problems and Solutions
+
+**1. "Connection closed" errors (MCP error -32000)**
+- **Cause**: Server exits immediately after startup
+- **Debug**: Check server logs for startup errors
+- **Solution**: Verify Python environment and dependencies
+
+**2. No MCP messages in debug output**
+- **Cause**: Servers not registered with Claude Code CLI
+- **Solution**: Run `claude mcp add` commands (see above)
+- **Note**: `.mcp.json` is NOT automatically loaded by CLI
+
+**3. Protocol handshake failures**
+- **Cause**: Wrong protocol version or initialization options
+- **Current Protocol**: `2024-11-05` (as of 2025)
+- **Solution**: Ensure servers use correct MCP library version
+
+**4. STDIO communication corruption**
+- **Cause**: Server writing to stdout (breaks JSON-RPC)
+- **Rule**: Never use `print()` or `console.log()` in MCP servers
+- **Solution**: Use stderr for debugging or log files only
+
+**5. Environment path issues**
+- **Cause**: Claude Code cannot find Python/Node binaries
+- **Solution**: Use absolute paths in configuration
+- **Example**: `/home/user/.claude/mcp/central/venv/bin/python`
+
+#### Debugging Steps
+1. **Enable debug mode and read FULL output**:
+   ```bash
+   claude --debug --dangerously-skip-permissions -p 'test' 2>&1 | tee debug.log
+   # Read the ENTIRE log - do not grep initially
+   ```
+
+2. **Look for MCP indicators**:
+   - `[DEBUG] MCP server "name": Calling MCP tool` - Server working
+   - `[DEBUG] MCP server "name": Tool call succeeded` - Success
+   - No MCP messages at all - Servers not loaded
+
+3. **Test servers manually**:
+   ```bash
+   echo '{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05"},"id":1}' | \
+     /path/to/python /path/to/server.py
+   ```
+
+4. **Run MCP test suite**:
+   ```bash
+   # Quick test (30 seconds)
+   ./test_mcp_quick.sh
+
+   # Comprehensive test
+   ./test_mcp_servers.py
+
+   # Pytest integration
+   pytest tests/test_mcp_integration.py -v
+   ```
+
+#### MCP Server Requirements (Critical)
+- **Protocol Version**: Must use `2024-11-05`
+- **Return Types**: `list[Tool]` not `ListToolsResult`
+- **Transport**: STDIO only (no HTTP for Claude Desktop)
+- **Logging**: File-based only, never stdout/stderr during operation
+- **Path**: Absolute paths required in configuration
+- **Dependencies**: Isolated venv per server
+- **Registration**: Must use `claude mcp add` for CLI
+
+#### Testing MCP Servers
+
+The project includes comprehensive MCP tests:
+- `test_mcp_quick.sh` - Quick 30-second verification
+- `test_mcp_servers.py` - Detailed test suite with diagnostics
+- `tests/test_mcp_integration.py` - Pytest integration tests
+
+Tests are automatically run by:
+- `./run_tests.sh` - Includes MCP tests
+- Pre-commit hooks - Runs quick tests only (excludes slow integration tests)
+
+**Documentation:**
+- `MCP_TESTING_GUIDE.md` - How to test MCP servers
+- `MCP_SERVER_TROUBLESHOOTING.md` - Debug connection issues
+- `MCP_CROSS_WORKSPACE_SETUP.md` - Set up servers for all workspaces
+- `MCP_KEY_LEARNINGS.md` - Critical discoveries and lessons learned
+- `indexing/MCP_SERVER_GUIDE.md` - Implementation details
 
 ---
 

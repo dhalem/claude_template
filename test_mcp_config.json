@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "env-debug": {
+      "command": "/home/dhalem/github/claude_template/venv/bin/python3",
+      "args": [
+        "/home/dhalem/github/claude_template/mcp_env_debug.py"
+      ]
+    }
+  }
+}

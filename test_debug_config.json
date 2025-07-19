@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "code-review-debug": {
+      "command": "/home/dhalem/github/claude_template/mcp_wrapper_debug.sh",
+      "args": [
+        "/home/dhalem/github/claude_template/venv/bin/python3",
+        "/home/dhalem/github/claude_template/indexing/mcp_review_server.py"
+      ]
+    }
+  }
+}
