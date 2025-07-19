@@ -396,6 +396,7 @@ Tests are automatically run by:
 - Pre-commit hooks - Runs quick tests only (excludes slow integration tests)
 
 **Documentation:**
+- `indexing/MCP_SERVER_USAGE.md` - **Complete usage guide and API reference**
 - `MCP_TESTING_GUIDE.md` - How to test MCP servers
 - `MCP_SERVER_TROUBLESHOOTING.md` - Debug connection issues
 - `MCP_CROSS_WORKSPACE_SETUP.md` - Set up servers for all workspaces
