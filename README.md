@@ -124,6 +124,29 @@ python3 indexing/claude_code_search.py list_type 'class'
 python3 indexing/claude_code_search.py file_symbols "src/models.py"
 ```
 
+### MCP Server Integration
+```bash
+# Install MCP servers for Claude Code
+./install-mcp-servers.sh
+
+# Test MCP server connection
+claude --debug -p 'hello world'
+# Look for: "MCP server connected successfully" in debug output
+
+# Manual server testing (for debugging)
+/home/dhalem/.claude/mcp/central/venv/bin/python \
+  /home/dhalem/.claude/mcp/central/code-search/server.py
+```
+
+**Available MCP servers:**
+- **code-search**: Search symbols across workspaces
+- **code-review**: AI-powered code review with Gemini
+
+**Troubleshooting MCP:**
+- Check logs: `~/.claude/mcp/central/*/logs/server_*.log`
+- Verify environment: `GEMINI_API_KEY` required for code-review
+- Reinstall: Run `./install-mcp-servers.sh` again
+
 ### Testing
 ```bash
 # Run all tests

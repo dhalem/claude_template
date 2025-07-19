@@ -224,6 +224,56 @@ If a hook blocks a legitimate operation:
 
 See `hooks/OVERRIDE_SYSTEM.md` for details.
 
+## 🔧 MCP Server Installation and Testing
+
+This project includes two MCP (Model Context Protocol) servers for Claude Code integration:
+
+### Installation
+```bash
+# Install MCP servers to central location
+./install-mcp-servers.sh
+```
+
+This installs:
+- **code-search**: Search code symbols and content across workspaces
+- **code-review**: AI-powered code review using Gemini
+
+### Testing MCP Server Connection
+```bash
+# Test if MCP servers are connecting properly
+claude --debug -p 'hello world'
+```
+
+**Expected output in debug logs:**
+- ✅ `MCP server "code-search": Connected successfully`
+- ✅ `MCP server "code-review": Connected successfully`
+
+**Common connection issues:**
+- ❌ `Connection closed` - Server startup failure
+- ❌ `MCP error -32000` - Protocol communication issue
+
+### Manual Server Testing
+```bash
+# Test individual server startup (for debugging)
+/home/dhalem/.claude/mcp/central/venv/bin/python \
+  /home/dhalem/.claude/mcp/central/code-search/server.py
+
+# Server should log: "Code Search MCP Server starting"
+# Press Ctrl+C to stop
+```
+
+### Configuration
+Servers are automatically configured in `~/.config/claude/claude_desktop_config.json`:
+- Uses central Python virtual environment
+- Requires `GEMINI_API_KEY` environment variable for code-review
+- Logs to `~/.claude/mcp/central/{server}/logs/`
+
+### Troubleshooting
+1. **Check server logs**: `~/.claude/mcp/central/code-*/logs/server_*.log`
+2. **Verify installation**: Run `./install-mcp-servers.sh` again
+3. **Test connection**: Use `claude --debug` command above
+4. **Check permissions**: Ensure central directory is accessible
+
 ---
 
 Created from Spotidal production best practices. These rules prevent real harm.
