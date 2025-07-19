@@ -35,16 +35,15 @@ class ClaudeCodeSearcher:
         """
         try:
             if search_type == "name":
-                results = self.searcher.search(
-                    query, search_type="name", symbol_type=kwargs.get("symbol_type"), limit=kwargs.get("limit", 20)
+                results = self.searcher.search_by_name(
+                    query, symbol_type=kwargs.get("symbol_type"), limit=kwargs.get("limit", 20)
                 )
             elif search_type == "file":
-                results = self.searcher.search(query, search_type="file", limit=kwargs.get("limit", 50))
+                results = self.searcher.search_by_file(query, limit=kwargs.get("limit", 50))
             elif search_type == "type":
-                results = self.searcher.list_symbols(query, limit=kwargs.get("limit", 50))
+                results = self.searcher.search_by_type(query, limit=kwargs.get("limit", 50))
             elif search_type == "file_symbols":
-                # For file symbols, search by content in a specific file
-                results = self.searcher.search(query, search_type="content", limit=kwargs.get("limit", 100))
+                results = self.searcher.get_file_symbols(query)
             else:
                 return {"success": False, "error": f"Unknown search type: {search_type}", "results": []}
 

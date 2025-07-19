@@ -204,3 +204,95 @@ class CodeSearcher:
                 "success": False,
                 "error": str(e)
             }
+
+    # Convenience methods for cleaner API usage
+    def search_by_name(self, query: str, symbol_type: Optional[str] = None, limit: int = 50) -> Dict[str, Any]:
+        """Search for symbols by name.
+
+        Args:
+            query: Search query (supports * and ? wildcards)
+            symbol_type: Filter by symbol type - 'function', 'class', 'method', or 'variable'
+            limit: Maximum number of results
+
+        Returns:
+            Dictionary with search results
+        """
+        return self.search(query, "name", symbol_type, limit)
+
+    def search_by_content(self, query: str, symbol_type: Optional[str] = None, limit: int = 50) -> Dict[str, Any]:
+        """Search for symbols by content (name, docstring, signature).
+
+        Args:
+            query: Search query (supports * and ? wildcards)
+            symbol_type: Filter by symbol type - 'function', 'class', 'method', or 'variable'
+            limit: Maximum number of results
+
+        Returns:
+            Dictionary with search results
+        """
+        return self.search(query, "content", symbol_type, limit)
+
+    def search_by_file(self, query: str, limit: int = 50) -> Dict[str, Any]:
+        """Search for files by path pattern.
+
+        Args:
+            query: File path pattern (supports * and ? wildcards)
+            limit: Maximum number of results
+
+        Returns:
+            Dictionary with search results
+        """
+        return self.search(query, "file", None, limit)
+
+    def search_in_file(self, file_path: str, name_pattern: Optional[str] = None, limit: int = 100) -> Dict[str, Any]:
+        """Search for symbols within a specific file.
+
+        Args:
+            file_path: Path to the file to search in
+            name_pattern: Optional pattern to filter symbol names
+            limit: Maximum number of results
+
+        Returns:
+            Dictionary with search results
+        """
+        # Search by content and filter by file path
+        if name_pattern:
+            query = name_pattern
+        else:
+            query = "*"  # Match all symbols in the file
+
+        result = self.search(query, "content", None, limit)
+
+        if result.get("success") and result.get("results"):
+            # Filter results to only include symbols from the specified file
+            filtered_results = [
+                r for r in result["results"]
+                if r.get("file_path") == file_path
+            ]
+            result["results"] = filtered_results
+            result["count"] = len(filtered_results)
+
+        return result
+
+    def get_file_symbols(self, file_path: str) -> Dict[str, Any]:
+        """Get all symbols from a specific file.
+
+        Args:
+            file_path: Path to the file
+
+        Returns:
+            Dictionary with search results
+        """
+        return self.search_in_file(file_path)
+
+    def search_by_type(self, symbol_type: str, limit: int = 50) -> Dict[str, Any]:
+        """Search for symbols by type only (alias for list_symbols).
+
+        Args:
+            symbol_type: Type of symbol - 'function', 'class', 'method', or 'variable'
+            limit: Maximum number of results
+
+        Returns:
+            Dictionary with search results
+        """
+        return self.list_symbols(symbol_type, limit)
