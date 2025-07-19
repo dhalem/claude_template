@@ -105,7 +105,7 @@ test_mcp_integration() {
 
     # Run MCP installation tests first
     log_info "Running MCP installation tests..."
-    if "$VENV_PATH/bin/python" -m pytest tests/test_mcp_installation.py -v -k "not end_to_end"; then
+    if "$VENV_PATH/bin/python" -m pytest tests/test_mcp_installation.py -v; then
         log_success "MCP installation tests passed"
     else
         log_warning "MCP installation tests had issues (non-blocking for commits)"

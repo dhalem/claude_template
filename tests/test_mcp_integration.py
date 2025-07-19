@@ -201,7 +201,7 @@ def example_function():
             test_file = f.name
 
         try:
-            # Run Claude with MCP tool
+            # Run Claude with MCP tool (reduced timeout for pre-commit compatibility)
             result = subprocess.run(
                 [
                     "claude", "--debug", "--dangerously-skip-permissions",
@@ -209,7 +209,7 @@ def example_function():
                 ],
                 capture_output=True,
                 text=True,
-                timeout=60
+                timeout=30  # Reduced from 60 to 30 seconds
             )
 
             output = result.stdout + result.stderr
@@ -242,7 +242,7 @@ def example_function():
         if "code-search" not in servers:
             pytest.fail("code-search server not configured - required for this test")
 
-        # Run Claude with MCP tool
+        # Run Claude with MCP tool (reduced timeout for pre-commit compatibility)
         result = subprocess.run(
             [
                 "claude", "--debug", "--dangerously-skip-permissions",
@@ -250,7 +250,7 @@ def example_function():
             ],
             capture_output=True,
             text=True,
-            timeout=60
+            timeout=30  # Reduced from 60 to 30 seconds
         )
 
         output = result.stdout + result.stderr
