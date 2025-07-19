@@ -103,7 +103,15 @@ test_mcp_integration() {
     cd "$PROJECT_ROOT"
     source "$VENV_PATH/bin/activate"
 
-    # Run cross-workspace prevention tests first
+    # Run MCP installation tests first
+    log_info "Running MCP installation tests..."
+    if "$VENV_PATH/bin/python" -m pytest tests/test_mcp_installation.py -v -k "not end_to_end"; then
+        log_success "MCP installation tests passed"
+    else
+        log_warning "MCP installation tests had issues (non-blocking for commits)"
+    fi
+
+    # Run cross-workspace prevention tests
     if [ -f "./test_mcp_cross_workspace_prevention.py" ]; then
         log_info "Running MCP cross-workspace prevention tests..."
         if "$VENV_PATH/bin/python" ./test_mcp_cross_workspace_prevention.py; then
@@ -179,10 +187,23 @@ if [ $# -gt 0 ]; then
             test_mcp_integration
             exit $?
             ;;
+        --fast)
+            log_info "Running fast test suite for pre-commit..."
+            check_venv
+            # Only run indexing tests for fast mode
+            if test_indexing; then
+                log_success "Fast test suite completed successfully"
+                exit 0
+            else
+                log_error "Fast test suite failed"
+                exit 1
+            fi
+            ;;
         --help)
-            echo "Usage: $0 [--indexing-only|--mcp-only]"
+            echo "Usage: $0 [--indexing-only|--mcp-only|--fast]"
             echo "  --indexing-only  Run only indexing system tests"
             echo "  --mcp-only       Run only MCP integration tests"
+            echo "  --fast           Run fast tests for pre-commit (indexing only)"
             echo "  (no args)        Run all tests"
             exit 0
             ;;

@@ -49,7 +49,12 @@ pip install -r "$SCRIPT_DIR/indexing/requirements.txt"
 echo "⚙️  Creating portable MCP configuration..."
 
 # For Claude Desktop - Update global config
-CONFIG_FILE="$HOME/.config/claude/claude_desktop_config.json"
+CONFIG_DIR="$HOME/.config/claude"
+CONFIG_FILE="$CONFIG_DIR/claude_desktop_config.json"
+
+# Create config directory if it doesn't exist
+mkdir -p "$CONFIG_DIR"
+
 if [ -f "$CONFIG_FILE" ]; then
     echo "📋 Backing up existing Claude Desktop config..."
     cp "$CONFIG_FILE" "$CONFIG_FILE.backup.$(date +%Y%m%d_%H%M%S)"

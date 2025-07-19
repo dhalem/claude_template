@@ -132,6 +132,15 @@ git show --name-only HEAD    # Confirm files actually committed
 3. If tests fail, fix immediately - do NOT skip or defer
 **This is basic software engineering.**
 
+### 🚨 NO SKIPPING TESTS (MANDATORY)
+**WE ARE PATIENT AND CAREFUL, NOT RUSHED AND DANGEROUS**
+- **NEVER add @pytest.mark.skip or @pytest.mark.slow to avoid running tests**
+- **NEVER use -k "not slow" or similar to exclude tests**
+- **NEVER bypass tests with timeouts or workarounds**
+- **If tests take time, that's FINE - quality over speed**
+- **Tests exist to ensure our software works correctly**
+- **Skipping tests = shipping broken software to users**
+
 ### 🧪 WHEN TESTS FAIL OR HANG (MANDATORY DEBUGGING)
 **When pre-commit hooks fail/timeout, NEVER assume it's a "timeout issue":**
 1. **YOU PROBABLY BROKE SOMETHING** - Tests don't randomly fail

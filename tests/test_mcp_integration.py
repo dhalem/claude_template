@@ -25,15 +25,34 @@ class TestMCPServers:
 
     @pytest.fixture(scope="class")
     def mcp_config(self):
-        """Load MCP configuration"""
+        """Load MCP configuration - supports both local and central installations"""
         mcp_json = Path(".mcp.json")
+
+        # Check for central installation first
+        central_dir = Path.home() / ".claude/mcp/central"
+        if central_dir.exists():
+            # If central installation exists, create a virtual config
+            return {
+                "mcpServers": {
+                    "code-search": {
+                        "command": str(central_dir / "venv/bin/python"),
+                        "args": [str(central_dir / "code-search/server.py")]
+                    },
+                    "code-review": {
+                        "command": str(central_dir / "venv/bin/python"),
+                        "args": [str(central_dir / "code-review/server.py")]
+                    }
+                }
+            }
+
+        # Fall back to .mcp.json
         if not mcp_json.exists():
-            pytest.fail(".mcp.json file not found - MCP servers not configured")
+            pytest.fail(".mcp.json file not found and no central installation - MCP servers not configured")
 
         config = json.loads(mcp_json.read_text())
         # If config is empty or has no servers, fail the test
         if not config.get("mcpServers"):
-            pytest.fail("No MCP servers configured in .mcp.json - expected 'code-search' and 'code-review' servers")
+            pytest.fail("No MCP servers configured in .mcp.json or centrally - expected 'code-search' and 'code-review' servers")
         return config
 
     @pytest.fixture(scope="class")
