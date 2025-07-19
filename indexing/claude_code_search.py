@@ -5,10 +5,17 @@ Provides structured output that's easy to parse.
 """
 
 import json
+import os
 import sys
 from typing import Any, Dict
 
-from search_code import CodeSearcher
+# Add src directory to path for imports
+current_dir = os.path.dirname(os.path.abspath(__file__))
+src_path = os.path.join(current_dir, 'src')
+if src_path not in sys.path:
+    sys.path.insert(0, src_path)
+
+from code_searcher import CodeSearcher
 
 
 class ClaudeCodeSearcher:
@@ -28,40 +35,29 @@ class ClaudeCodeSearcher:
         """
         try:
             if search_type == "name":
-                results = self.searcher.search_by_name(
-                    query, symbol_type=kwargs.get("symbol_type"), limit=kwargs.get("limit", 20)
+                results = self.searcher.search(
+                    query, search_type="name", symbol_type=kwargs.get("symbol_type"), limit=kwargs.get("limit", 20)
                 )
             elif search_type == "file":
-                results = self.searcher.search_in_file(query, name_pattern=kwargs.get("name_pattern"))
+                results = self.searcher.search(query, search_type="file", limit=kwargs.get("limit", 50))
             elif search_type == "type":
-                results = self.searcher.search_by_type(query, limit=kwargs.get("limit", 50))
+                results = self.searcher.list_symbols(query, limit=kwargs.get("limit", 50))
             elif search_type == "file_symbols":
-                results = self.searcher.get_file_symbols(query)
+                # For file symbols, search by content in a specific file
+                results = self.searcher.search(query, search_type="content", limit=kwargs.get("limit", 100))
             else:
                 return {"success": False, "error": f"Unknown search type: {search_type}", "results": []}
 
-            # Convert results to dict format
-            results_dict = []
-            for r in results:
-                result_dict = {
-                    "name": r.name,
-                    "type": r.type,
-                    "file_path": r.file_path,
-                    "line_number": r.line_number,
-                    "column": r.column,
-                    "parent": r.parent,
-                    "signature": r.signature,
-                    "docstring": r.docstring,
-                    "location": f"{r.file_path}:{r.line_number}",
-                }
-                results_dict.append(result_dict)
+            # The searcher methods return a dict with "success", "results", etc.
+            if not results.get("success"):
+                return {"success": False, "error": results.get("error", "Search failed"), "results": []}
 
             return {
                 "success": True,
                 "query": query,
                 "search_type": search_type,
-                "count": len(results_dict),
-                "results": results_dict,
+                "count": results.get("count", len(results.get("results", []))),
+                "results": results.get("results", []),
             }
 
         except Exception as e:
