@@ -25,28 +25,23 @@ from mcp.server.stdio import stdio_server
 from mcp.types import TextContent, Tool
 
 # Use local imports - all required modules are copied to src/
+# Always use direct imports since this runs as a standalone script
 try:
-    from .src.file_collector import FileCollector
-    from .src.gemini_client import GeminiClient
-    from .src.review_formatter import ReviewFormatter
-except ImportError:
-    # Fallback for direct execution - determine current directory safely
-    try:
-        current_file_dir = os.path.dirname(os.path.abspath(__file__))
-    except NameError:
-        # If __file__ is not defined, try sys.argv[0] or current directory
-        if sys.argv and sys.argv[0]:
-            current_file_dir = os.path.dirname(os.path.abspath(sys.argv[0]))
-        else:
-            current_file_dir = os.path.abspath(".")
+    current_file_dir = os.path.dirname(os.path.abspath(__file__))
+except NameError:
+    # If __file__ is not defined, try sys.argv[0] or current directory
+    if sys.argv and sys.argv[0]:
+        current_file_dir = os.path.dirname(os.path.abspath(sys.argv[0]))
+    else:
+        current_file_dir = os.path.abspath(".")
 
-    src_path = os.path.join(current_file_dir, 'src')
-    if src_path not in sys.path:
-        sys.path.insert(0, src_path)
+src_path = os.path.join(current_file_dir, 'src')
+if src_path not in sys.path:
+    sys.path.insert(0, src_path)
 
-    from file_collector import FileCollector
-    from gemini_client import GeminiClient
-    from review_formatter import ReviewFormatter
+from file_collector import FileCollector
+from gemini_client import GeminiClient
+from review_formatter import ReviewFormatter
 
 # Set up logging
 LOG_DIR = Path.home() / ".claude" / "mcp" / "code-review" / "logs"
