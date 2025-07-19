@@ -225,21 +225,35 @@ class TestInstallation(unittest.TestCase):
 
     def test_server_directory_structure(self):
         """Test that server follows correct MCP directory structure."""
-        # This would be run after installation
-        mcp_dir = Path.home() / ".claude" / "mcp" / "code-search"
+        # Check for central installation structure (preferred)
+        central_dir = Path.home() / ".claude" / "mcp" / "central"
+        old_dir = Path.home() / ".claude" / "mcp" / "code-search"
 
-        if mcp_dir.exists():
-            # Check required directories
-            self.assertTrue((mcp_dir / "bin").exists(), "bin directory missing")
-            self.assertTrue((mcp_dir / "venv").exists(), "venv directory missing")
-            self.assertTrue((mcp_dir / "logs").exists(), "logs directory missing")
+        if central_dir.exists():
+            # Central installation structure
+            self.assertTrue((central_dir / "venv").exists(), "central venv directory missing")
+            self.assertTrue((central_dir / "code-search").exists(), "code-search directory missing")
+            self.assertTrue((central_dir / "code-review").exists(), "code-review directory missing")
+
+            # Check server files
+            search_server = central_dir / "code-search" / "server.py"
+            review_server = central_dir / "code-review" / "server.py"
+            self.assertTrue(search_server.exists(), "code-search server.py missing")
+            self.assertTrue(review_server.exists(), "code-review server.py missing")
+
+            # Check src directories
+            self.assertTrue((central_dir / "code-search" / "src").exists(), "code-search src missing")
+            self.assertTrue((central_dir / "code-review" / "src").exists(), "code-review src missing")
+        elif old_dir.exists():
+            # Old installation structure (for backwards compatibility)
+            self.assertTrue((old_dir / "venv").exists(), "venv directory missing")
+            self.assertTrue((old_dir / "logs").exists(), "logs directory missing")
 
             # Check server file
-            server_file = mcp_dir / "bin" / "server.py"
-            self.assertTrue(server_file.exists(), "server.py missing")
-            self.assertTrue(os.access(server_file, os.X_OK), "server.py not executable")
+            server_file = old_dir / "mcp_code_search_server.py"
+            self.assertTrue(server_file.exists(), "server file missing")
         else:
-            self.skipTest("MCP server not installed")
+            self.skipTest("MCP server not installed (neither central nor old structure found)")
 
     def test_no_manual_configuration(self):
         """Test that server doesn't use manual configuration (unless central installation)."""
