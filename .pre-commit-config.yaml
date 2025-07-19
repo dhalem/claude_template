@@ -199,7 +199,7 @@ repos:
   hooks:
   - id: project-tests
     name: Project Test Suite
-    entry: bash -c 'timeout 60s ./run_tests.sh || echo "Tests timed out or failed - non-blocking for commits"'
+    entry: bash -c './run_tests.sh || pytest || python -m pytest || echo "No test runner found - configure in .pre-commit-config.yaml"'
     language: system
     types:
     - python

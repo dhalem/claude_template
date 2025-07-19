@@ -83,7 +83,7 @@ EOF
 
 # Test the tool
 TEMP_LOG=$(mktemp)
-timeout 30 claude --debug --dangerously-skip-permissions \
+timeout 10 claude --debug --dangerously-skip-permissions \
     -p "Use the mcp__code-review__review_code tool to review test_mcp_target.py" \
     > "$TEMP_LOG" 2>&1 || true
 

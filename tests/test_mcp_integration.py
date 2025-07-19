@@ -27,9 +27,14 @@ class TestMCPServers:
     def mcp_config(self):
         """Load MCP configuration"""
         mcp_json = Path(".mcp.json")
-        if mcp_json.exists():
-            return json.loads(mcp_json.read_text())
-        return {}
+        if not mcp_json.exists():
+            pytest.fail(".mcp.json file not found - MCP servers not configured")
+
+        config = json.loads(mcp_json.read_text())
+        # If config is empty or has no servers, fail the test
+        if not config.get("mcpServers"):
+            pytest.fail("No MCP servers configured in .mcp.json - expected 'code-search' and 'code-review' servers")
+        return config
 
     @pytest.fixture(scope="class")
     def claude_available(self):
@@ -87,13 +92,20 @@ class TestMCPServers:
         server_config = servers.get(server_name)
 
         if not server_config:
-            pytest.skip(f"Server {server_name} not in .mcp.json")
+            pytest.fail(f"Server {server_name} not found in .mcp.json - expected both 'code-search' and 'code-review' servers")
 
         command = server_config.get("command")
         args = server_config.get("args", [])
 
         if not command or not args:
-            pytest.skip(f"Invalid config for {server_name}")
+            pytest.fail(f"Invalid config for {server_name} - missing command or args")
+
+        # Check if the server files actually exist before trying to run them
+        if not os.path.exists(command):
+            pytest.fail(f"Server command not found: {command} - servers must be installed")
+
+        if args and not os.path.exists(args[0]):
+            pytest.fail(f"Server script not found: {args[0]} - servers must be installed")
 
         # Prepare protocol test
         init_request = {
@@ -141,10 +153,15 @@ class TestMCPServers:
             pytest.fail(f"Invalid JSON from {server_name}: {e}")
 
     @pytest.mark.slow
-    def test_mcp_code_review_integration(self, claude_available):
+    def test_mcp_code_review_integration(self, claude_available, mcp_config):
         """Test code review MCP tool through Claude"""
         if not claude_available:
             pytest.skip("Claude CLI not available")
+
+        # This test requires MCP servers to be configured
+        servers = mcp_config.get("mcpServers", {})
+        if "code-review" not in servers:
+            pytest.fail("code-review server not configured - required for this test")
 
         # Create test file
         with tempfile.NamedTemporaryFile(
@@ -196,10 +213,15 @@ def example_function():
             Path(test_file).unlink(missing_ok=True)
 
     @pytest.mark.slow
-    def test_mcp_code_search_integration(self, claude_available):
+    def test_mcp_code_search_integration(self, claude_available, mcp_config):
         """Test code search MCP tool through Claude"""
         if not claude_available:
             pytest.skip("Claude CLI not available")
+
+        # This test requires MCP servers to be configured
+        servers = mcp_config.get("mcpServers", {})
+        if "code-search" not in servers:
+            pytest.fail("code-search server not configured - required for this test")
 
         # Run Claude with MCP tool
         result = subprocess.run(
