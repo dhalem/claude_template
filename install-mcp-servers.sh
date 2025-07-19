@@ -56,14 +56,14 @@ cat > "$CONFIG_FILE" << 'EOF'
 {
   "mcpServers": {
     "code-search": {
-      "command": "python",
+      "command": "/home/dhalem/.claude/mcp/central/venv/bin/python",
       "args": ["/home/dhalem/.claude/mcp/central/code-search/server.py"],
       "env": {
         "PYTHONPATH": "/home/dhalem/.claude/mcp/central/code-search"
       }
     },
     "code-review": {
-      "command": "python",
+      "command": "/home/dhalem/.claude/mcp/central/venv/bin/python",
       "args": ["/home/dhalem/.claude/mcp/central/code-review/server.py"],
       "env": {
         "PYTHONPATH": "/home/dhalem/.claude/mcp/central/code-review"
