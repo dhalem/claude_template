@@ -233,33 +233,115 @@ If a hook blocks a legitimate operation:
 
 See `hooks/OVERRIDE_SYSTEM.md` for details.
 
-## 🔧 MCP Server Installation and Testing
+## 🔧 MCP Server Installation and Usage
 
-This project includes two MCP (Model Context Protocol) servers for Claude Code integration:
+This project includes two MCP (Model Context Protocol) servers for Claude Code integration from [github.com/dhalem/claude_template](https://github.com/dhalem/claude_template):
 
-### Installation
+1. **code-search**: Search code symbols, content, and files using indexed database
+2. **code-review**: AI-powered code review using Google Gemini
 
-**For Claude Desktop**:
+### Installation and Setup
+
+**Prerequisites:**
+- Python virtual environment activated (`source venv/bin/activate`)
+- For code-review: `GEMINI_API_KEY` environment variable set
+
+**Installation:**
 ```bash
-# Install MCP servers to central location
+# For Claude Desktop (automatic .mcp.json detection)
 ./install-mcp-servers.sh
-```
 
-**For Claude Code CLI (Cross-Workspace Support)**:
-```bash
-# Install centrally for all workspaces
+# For Claude Code CLI (requires manual registration)
 ./install-mcp-central.sh
-
-# Register globally (if needed)
-./register-mcp-global.sh
-
-# Verify they work everywhere
-claude mcp list  # Should work from any directory
+claude mcp add code-search /home/$USER/.claude/mcp/central/venv/bin/python /home/$USER/.claude/mcp/central/code-search/server.py
+claude mcp add code-review /home/$USER/.claude/mcp/central/venv/bin/python /home/$USER/.claude/mcp/central/code-review/server.py
 ```
 
-This installs:
-- **code-search**: Search code symbols and content across workspaces
-- **code-review**: AI-powered code review using Gemini
+### Code Search Server (`code-search`)
+
+**Purpose**: Search through indexed codebase for symbols, content, and files
+
+**Available Tools:**
+
+#### 1. `search_code` - Search for code symbols by name, content, or file path
+**Parameters:**
+- `query` (required): Search query (supports * and ? wildcards)
+- `search_type` (optional): "name" (default), "content", or "file"
+- `symbol_type` (optional): "function", "class", "method", or "variable"
+- `limit` (optional): Maximum results (default: 50)
+
+**Examples:**
+```bash
+# Search for functions containing "parse"
+search_code query="parse*" search_type="name" symbol_type="function"
+
+# Search file content for "TODO"
+search_code query="TODO" search_type="content"
+
+# Find files with "config" in name
+search_code query="*config*" search_type="file"
+```
+
+#### 2. `list_symbols` - List all symbols of a specific type
+**Parameters:**
+- `symbol_type` (required): "function", "class", "method", or "variable"
+- `limit` (optional): Maximum results (default: 100)
+
+**Examples:**
+```bash
+# List all classes
+list_symbols symbol_type="class"
+
+# List first 20 functions
+list_symbols symbol_type="function" limit=20
+```
+
+#### 3. `get_search_stats` - Get statistics about the code index database
+**Parameters:** None required
+
+**Returns:** Database statistics including total symbols, files, and breakdown by type
+
+**Requirements:**
+- Code index database (`.code_index.db`) must exist
+- Run `./start-indexer.sh` if database missing
+- Server searches for database in: current directory, parent directories (3 levels), home directory, `/app/`
+
+### Code Review Server (`code-review`)
+
+**Purpose**: Perform comprehensive AI-powered code review using Google Gemini
+
+**Available Tools:**
+
+#### 1. `review_code` - Perform comprehensive code review of a directory
+**Parameters:**
+- `directory` (required): Absolute path to directory to review
+- `focus_areas` (optional): Array of specific focus areas (e.g., ["security", "performance"])
+- `model` (optional): Gemini model - "gemini-1.5-flash" or "gemini-2.5-pro" (default)
+- `max_file_size` (optional): Maximum file size in bytes (default: 1048576)
+
+**Examples:**
+```bash
+# Basic code review
+review_code directory="/path/to/project"
+
+# Security-focused review
+review_code directory="/path/to/project" focus_areas=["security", "error_handling"]
+
+# Use different model with larger file limit
+review_code directory="/path/to/project" model="gemini-2.5-pro" max_file_size=2097152
+```
+
+**Features:**
+- Automatic file collection (respects gitignore patterns)
+- Supports multiple programming languages (.py, .js, .ts, .go, .rs, etc.)
+- Includes project context (CLAUDE.md file if present)
+- Usage tracking and cost estimation
+- Comprehensive file tree analysis
+
+**Requirements:**
+- `GEMINI_API_KEY` environment variable
+- Directory must exist and be readable
+- Files must be under max_file_size limit
 
 ### Testing MCP Server Connection
 ```bash
@@ -268,6 +350,9 @@ claude --debug -p 'hello world'
 
 # For automated testing or CI environments, use:
 claude --debug --dangerously-skip-permissions -p 'hello world'
+
+# Verify servers are registered (CLI only)
+claude mcp list
 ```
 
 **Expected output in debug logs:**
@@ -276,9 +361,109 @@ claude --debug --dangerously-skip-permissions -p 'hello world'
 
 **Note**: The `--dangerously-skip-permissions` flag bypasses permission checks and should only be used for testing purposes, not in normal usage.
 
-**Common connection issues:**
-- ❌ `Connection closed` - Server startup failure
-- ❌ `MCP error -32000` - Protocol communication issue
+### Troubleshooting MCP Connection Issues
+
+#### Critical Discovery: Claude Code CLI vs Desktop Differences
+
+**IMPORTANT**: Claude Code CLI and Claude Desktop handle MCP servers completely differently:
+
+- **Claude Desktop**: Automatically loads `.mcp.json` from project root
+- **Claude Code CLI**: Requires manual server registration using `claude mcp add`
+- **Project config (.mcp.json) takes precedence over global config**
+
+If using Claude Code CLI, you MUST first register servers:
+```bash
+# Check if servers are already configured
+claude mcp list
+
+# If not listed, add them manually
+claude mcp add code-search ~/.claude/mcp/central/venv/bin/python ~/.claude/mcp/central/code-search/server.py
+claude mcp add code-review ~/.claude/mcp/central/venv/bin/python ~/.claude/mcp/central/code-review/server.py
+
+# Verify they were added
+claude mcp list
+```
+
+#### Common Problems and Solutions
+
+**1. "Connection closed" errors (MCP error -32000)**
+- **Cause**: Server exits immediately after startup
+- **Debug**: Check server logs for startup errors
+- **Solution**: Verify Python environment and dependencies
+
+**2. No MCP messages in debug output**
+- **Cause**: Servers not registered with Claude Code CLI
+- **Solution**: Run `claude mcp add` commands (see above)
+- **Note**: `.mcp.json` is NOT automatically loaded by CLI
+
+**3. Protocol handshake failures**
+- **Cause**: Wrong protocol version or initialization options
+- **Current Protocol**: `2024-11-05` (as of 2025)
+- **Solution**: Ensure servers use correct MCP library version
+
+**4. STDIO communication corruption**
+- **Cause**: Server writing to stdout (breaks JSON-RPC)
+- **Rule**: Never use `print()` or `console.log()` in MCP servers
+- **Solution**: Use stderr for debugging or log files only
+
+**5. Environment path issues**
+- **Cause**: Claude Code cannot find Python/Node binaries
+- **Solution**: Use absolute paths in configuration
+- **Example**: `/home/user/.claude/mcp/central/venv/bin/python`
+
+#### Debugging Steps
+1. **Enable debug mode and read FULL output**:
+   ```bash
+   claude --debug --dangerously-skip-permissions -p 'test' 2>&1 | tee debug.log
+   # Read the ENTIRE log - do not grep initially
+   ```
+
+2. **Look for MCP indicators**:
+   - `[DEBUG] MCP server "name": Calling MCP tool` - Server working
+   - `[DEBUG] MCP server "name": Tool call succeeded` - Success
+   - No MCP messages at all - Servers not loaded
+
+3. **Test servers manually**:
+   ```bash
+   echo '{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05"},"id":1}' | \
+     ~/.claude/mcp/central/venv/bin/python ~/.claude/mcp/central/code-search/server.py
+   ```
+
+4. **Run MCP test suite**:
+   ```bash
+   # Quick test (30 seconds)
+   ./test_mcp_quick.sh
+
+   # Comprehensive test
+   ./test_mcp_servers.py
+
+   # Pytest integration
+   pytest tests/test_mcp_integration.py -v
+   ```
+
+#### MCP Server Requirements (Critical)
+- **Protocol Version**: Must use `2024-11-05`
+- **Return Types**: `list[Tool]` not `ListToolsResult`
+- **Transport**: STDIO only (no HTTP for Claude Desktop)
+- **Logging**: File-based only, never stdout/stderr during operation
+- **Path**: Absolute paths required in configuration
+- **Dependencies**: Isolated venv per server
+- **Registration**: Must use `claude mcp add` for CLI
+
+#### Log Locations
+- Code Search: `~/.claude/mcp/code-search/logs/server_YYYYMMDD.log`
+- Code Review: `~/.claude/mcp/code-review/logs/server_YYYYMMDD.log`
+
+### Best Practices for MCP Usage
+
+1. **Always activate virtual environment** before using MCP servers
+2. **Check logs** when troubleshooting connection issues
+3. **Use absolute paths** in all configurations
+4. **Test connectivity** with debug mode before important operations
+5. **Monitor usage** for code-review server (tracks tokens and cost)
+6. **Keep index updated** by running indexer regularly
+7. **Use appropriate models** - flash for quick reviews, pro for comprehensive analysis
+8. **Set reasonable limits** to avoid API rate limits and costs
 
 ### Manual Server Testing
 ```bash
