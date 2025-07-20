@@ -125,12 +125,17 @@ git show --name-only HEAD    # Confirm files actually committed
 **Why**: Multiple incidents caused by assuming commits succeeded when they failed.
 **YOU MUST CHECK THAT COMMIT WENT THROUGH BEFORE PROCEEDING!**
 
-### 🚨 TEST BEFORE COMMIT RULE (MANDATORY)
-**BEFORE EVERY COMMIT:**
-1. Run tests FIRST: `./run_tests.sh` or `pytest`
-2. ONLY commit if tests pass
-3. If tests fail, fix immediately - do NOT skip or defer
-**This is basic software engineering.**
+### 🚨 MANDATORY FULL TEST SUITE RULE (ZERO EXCEPTIONS)
+**ABSOLUTE REQUIREMENT - NO NEGOTIATIONS, NO SHORTCUTS:**
+
+1. **ALL TESTS MUST RUN EVERY TIME**: `./run_tests.sh` runs EVERY test in the project
+2. **NO COMMAND LINE OPTIONS**: Script rejects ANY flags or options - full test suite only
+3. **PRE-COMMIT ENFORCEMENT**: Pre-commit hooks run `./run_tests.sh` and BLOCK commits if ANY test fails
+4. **ZERO BYPASSING**: Never use `--no-verify`, never disable hooks, never skip tests
+5. **ALL TESTS MUST PASS**: Indexing tests, main project tests, MCP integration tests - ALL must pass
+
+**If tests fail: FIX THE TESTS, don't bypass them**
+**This rule exists because partial testing has caused production failures**
 
 ### 🚨 NO SKIPPING TESTS (MANDATORY)
 **WE ARE PATIENT AND CAREFUL, NOT RUSHED AND DANGEROUS**

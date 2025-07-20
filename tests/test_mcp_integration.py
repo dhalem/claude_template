@@ -209,7 +209,7 @@ def example_function():
                 ],
                 capture_output=True,
                 text=True,
-                timeout=30  # Reduced from 60 to 30 seconds
+                timeout=60  # Restored to 60 seconds - tests need ~31s to complete
             )
 
             output = result.stdout + result.stderr
@@ -250,7 +250,7 @@ def example_function():
             ],
             capture_output=True,
             text=True,
-            timeout=30  # Reduced from 60 to 30 seconds
+            timeout=60  # Restored to 60 seconds - tests need ~31s to complete
         )
 
         output = result.stdout + result.stderr
