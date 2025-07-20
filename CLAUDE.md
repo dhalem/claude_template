@@ -12,6 +12,10 @@
 
 **Failure to follow Rule #0 has caused real harm. Check BEFORE acting, not AFTER making mistakes.**
 
+## 📋 MANDATORY POSTMORTEMS TO READ
+**These postmortems document real failures. READ THEM to avoid repeating these mistakes:**
+- **[MCP Test Failure Postmortem](POSTMORTEM_MCP_TEST_FAILURE_20250119.md)** - Critical lesson: ALWAYS run full test suite (`./run_tests.sh`), not just subset
+
 ## 📝 RULE #0 COMMENT REQUIREMENT
 **EVERY FILE CREATED MUST INCLUDE RULE #0 REMINDER COMMENT**
 ```

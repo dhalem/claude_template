@@ -1,56 +1,95 @@
 # MCP Server Development Guide
 
-This guide documents how to create MCP (Model Context Protocol) servers based on the working `code-review` server implementation.
+This guide documents how to create MCP (Model Context Protocol) servers based on the working implementation in this project.
 
 ## Table of Contents
 1. [Overview](#overview)
-2. [Key Differences Between Servers](#key-differences)
-3. [MCP Server Architecture](#mcp-server-architecture)
+2. [MCP Server Architecture](#mcp-server-architecture)
+3. [Installation and Configuration](#installation-and-configuration)
 4. [Step-by-Step Implementation](#step-by-step-implementation)
-5. [Installation Requirements](#installation-requirements)
-6. [Configuration in Claude Desktop](#configuration)
-7. [Debugging MCP Servers](#debugging)
-8. [Template for New Servers](#template)
+5. [Debugging MCP Servers](#debugging)
+6. [Template for New Servers](#template)
 
 ## Overview
 
-MCP servers allow Claude Desktop to access external tools and services. The `code-review` server works because it follows a specific structure and installation pattern that differs from what we attempted with `code-search`.
-
-## Key Differences Between Servers
-
-### Working Code-Review Server
-- **Installation Path**: `~/.claude/mcp/code-review/bin/server.py`
-- **Dependencies**: Installed in `~/.claude/mcp/code-review/venv/`
-- **Source Files**: Copied to `~/.claude/mcp/code-review/src/`
-- **Configuration**: Not explicitly in claude_desktop_config.json (loaded automatically)
-
-### Non-Working Code-Search Server
-- **Installation Path**: `~/.claude/mcp/servers/code-search/mcp_search_server.py`
-- **Dependencies**: Using external venv
-- **Source Files**: None (all in main file)
-- **Configuration**: Explicitly added to claude_desktop_config.json
+MCP servers allow Claude Desktop and Claude Code CLI to access external tools and services. This project includes two working MCP servers:
+- `code-search`: Search code symbols, content, and files using indexed database
+- `code-review`: AI-powered code review using Google Gemini
 
 ## MCP Server Architecture
 
-### 1. Directory Structure
+### Centralized Installation Structure
 ```
-~/.claude/mcp/{server-name}/
-├── bin/
-│   └── server.py          # Main server executable
-├── src/                   # Supporting modules
-│   ├── module1.py
-│   └── module2.py
-├── venv/                  # Isolated Python environment
-│   └── ...
-└── logs/                  # Server logs
-    └── server_YYYYMMDD.log
+~/.claude/mcp/central/
+├── venv/                       # Shared Python environment
+│   ├── bin/python             # Python executable
+│   └── lib/python3.x/site-packages/
+├── code-search/
+│   ├── server.py              # MCP search server
+│   └── logs/                  # Server logs
+│       └── server_YYYYMMDD.log
+└── code-review/
+    ├── server.py              # MCP review server
+    └── logs/                  # Server logs
+        └── server_YYYYMMDD.log
 ```
 
-### 2. Server Implementation Pattern
+### Configuration Files
+- **Claude Desktop**: `~/.config/claude/claude_desktop_config.json`
+- **Claude Code CLI**: Manual registration with `claude mcp add`
+- **Project-specific**: `.mcp.json` (takes precedence over global config)
+
+## Installation and Configuration
+
+### Automated Installation
+```bash
+# Install servers for Claude Desktop (uses .mcp.json)
+./install-mcp-servers.sh
+
+# Install servers for Claude Code CLI
+./install-mcp-central.sh
+claude mcp add code-search ~/.claude/mcp/central/venv/bin/python ~/.claude/mcp/central/code-search/server.py
+claude mcp add code-review ~/.claude/mcp/central/venv/bin/python ~/.claude/mcp/central/code-review/server.py
+```
+
+### Configuration Differences
+
+#### Claude Desktop
+- Automatically loads `.mcp.json` from project root
+- No manual server registration required
+- Uses STDIO transport
+
+#### Claude Code CLI
+- Requires manual server registration with `claude mcp add`
+- Project `.mcp.json` not automatically loaded
+- Must use absolute paths in configuration
+
+### Example Configuration (.mcp.json)
+```json
+{
+  "mcpServers": {
+    "code-search": {
+      "command": "/home/user/.claude/mcp/central/venv/bin/python",
+      "args": ["/home/user/.claude/mcp/central/code-search/server.py"]
+    },
+    "code-review": {
+      "command": "/home/user/.claude/mcp/central/venv/bin/python",
+      "args": ["/home/user/.claude/mcp/central/code-review/server.py"],
+      "env": {
+        "GEMINI_API_KEY": "your-api-key-here"
+      }
+    }
+  }
+}
+```
+
+## Step-by-Step Implementation
+
+### 1. Server Implementation Pattern
 
 ```python
 #!/usr/bin/env python3
-"""MCP server for [functionality] using the official MCP library."""
+"""MCP server for [functionality]."""
 
 import asyncio
 import logging
@@ -65,29 +104,8 @@ from mcp.server.models import InitializationOptions
 from mcp.server.stdio import stdio_server
 from mcp.types import TextContent, Tool
 
-# Handle imports with fallback for MCP environment
-try:
-    from .src.module1 import Module1
-    from .src.module2 import Module2
-except ImportError:
-    # Fallback for direct execution
-    try:
-        current_file_dir = os.path.dirname(os.path.abspath(__file__))
-    except NameError:
-        if sys.argv and sys.argv[0]:
-            current_file_dir = os.path.dirname(os.path.abspath(sys.argv[0]))
-        else:
-            current_file_dir = os.path.abspath(".")
-
-    src_path = os.path.join(current_file_dir, '..', 'src')
-    if src_path not in sys.path:
-        sys.path.insert(0, src_path)
-
-    from module1 import Module1
-    from module2 import Module2
-
-# Set up logging
-LOG_DIR = Path.home() / ".claude" / "mcp" / "{server-name}" / "logs"
+# Set up logging to file only (never stdout/stderr)
+LOG_DIR = Path.home() / ".claude" / "mcp" / "central" / "{server-name}" / "logs"
 LOG_DIR.mkdir(parents=True, exist_ok=True)
 LOG_FILE = LOG_DIR / f"server_{datetime.now().strftime('%Y%m%d')}.log"
 
@@ -96,23 +114,21 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
         logging.FileHandler(LOG_FILE),
-        # Don't log to stderr to avoid interfering with MCP protocol
+        # NEVER log to stdout/stderr - breaks MCP protocol
     ]
 )
 
 logger = logging.getLogger(__name__)
 
-
 async def main():
     """Main MCP server function."""
     server = Server("{server-name}")
-
     logger.info("{Server Name} MCP Server starting")
 
     @server.list_tools()
     async def handle_list_tools() -> list[Tool]:
         """List available tools."""
-        tools = [
+        return [
             Tool(
                 name="tool_name",
                 description="Tool description",
@@ -128,14 +144,12 @@ async def main():
                 }
             )
         ]
-        return tools
 
     @server.call_tool()
     async def handle_call_tool(name: str, arguments: Dict[str, Any]) -> list[TextContent]:
-        """Handle tool calls - returns list of TextContent."""
+        """Handle tool calls."""
         try:
             if name == "tool_name":
-                # Tool implementation
                 result = "Tool result"
                 return [TextContent(type="text", text=result)]
             else:
@@ -144,121 +158,99 @@ async def main():
             logger.error(f"Error in {name}: {e}")
             return [TextContent(type="text", text=f"Error: {str(e)}")]
 
-    # Run the server
+    # Run server with proper initialization
     async with stdio_server() as (read_stream, write_stream):
         logger.info("Server running with stdio transport")
-        init_options = InitializationOptions(
-            server_name="{server-name}",
-            server_version="1.0.0",
-            capabilities=server.get_capabilities(
-                notification_options=NotificationOptions(),
-                experimental_capabilities={}
+        await server.run(
+            read_stream,
+            write_stream,
+            InitializationOptions(
+                server_name="{server-name}",
+                server_version="1.0.0",
+                capabilities=server.get_capabilities(
+                    notification_options=NotificationOptions(),
+                    experimental_capabilities={}
+                )
             )
         )
-        await server.run(read_stream, write_stream, init_options)
-
 
 if __name__ == "__main__":
     asyncio.run(main())
 ```
 
-## Step-by-Step Implementation
+### 2. Installation Script Pattern
 
-### 1. Create Server File
-Create your main server file following the pattern above.
-
-### 2. Create Installation Script
 ```bash
 #!/bin/bash
 set -euo pipefail
 
 echo "Installing MCP {Server Name} Server..."
-echo "====================================="
 
-# Check if running from correct directory
-if [ ! -f "mcp_{name}_server.py" ]; then
-    echo "Error: mcp_{name}_server.py not found in current directory"
-    exit 1
-fi
+# Central installation directory
+CENTRAL_DIR="$HOME/.claude/mcp/central"
+SERVER_DIR="$CENTRAL_DIR/{server-name}"
+VENV_DIR="$CENTRAL_DIR/venv"
 
-# Target directory structure (CRITICAL!)
-TARGET_DIR="$HOME/.claude/mcp/{server-name}"
-TARGET_BIN="$TARGET_DIR/bin"
-TARGET_SRC="$TARGET_DIR/src"
+# Create directories
+mkdir -p "$SERVER_DIR/logs"
 
-# Create directory structure
-mkdir -p "$TARGET_BIN" "$TARGET_SRC" "$TARGET_DIR/logs"
-
-# Install server (MUST be named server.py in bin/)
-cp mcp_{name}_server.py "$TARGET_BIN/server.py"
-chmod +x "$TARGET_BIN/server.py"
-
-# Copy source files if any
-if [ -d "src" ]; then
-    cp src/*.py "$TARGET_SRC/"
-fi
-
-# Create isolated venv
-if [ ! -d "$TARGET_DIR/venv" ]; then
-    python3 -m venv "$TARGET_DIR/venv"
+# Create shared venv if it doesn't exist
+if [ ! -d "$VENV_DIR" ]; then
+    python3 -m venv "$VENV_DIR"
+    "$VENV_DIR/bin/pip" install --upgrade pip
 fi
 
 # Install dependencies
-"$TARGET_DIR/venv/bin/pip" install --upgrade pip
-"$TARGET_DIR/venv/bin/pip" install mcp
+"$VENV_DIR/bin/pip" install mcp
 
-# Additional dependencies
-if [ -f "requirements.txt" ]; then
-    "$TARGET_DIR/venv/bin/pip" install -r requirements.txt
-fi
+# Copy server file
+cp "mcp_{name}_server.py" "$SERVER_DIR/server.py"
+chmod +x "$SERVER_DIR/server.py"
 
 echo "Installation complete!"
-echo "Server installed at: $TARGET_BIN/server.py"
-echo "Restart Claude Desktop to load the server"
+echo "Server: $SERVER_DIR/server.py"
+echo "Python: $VENV_DIR/bin/python"
 ```
 
-### 3. Key Installation Requirements
+### 3. Key Requirements
 
-1. **MUST use specific directory structure**: `~/.claude/mcp/{server-name}/bin/server.py`
-2. **MUST be named `server.py`** in the bin directory
-3. **MUST have its own venv** in `~/.claude/mcp/{server-name}/venv/`
-4. **MUST NOT add to claude_desktop_config.json** - Claude auto-discovers servers in the correct location
-
-## Configuration in Claude Desktop
-
-Claude Desktop automatically discovers MCP servers in:
-- `~/.claude/mcp/*/bin/server.py`
-
-The server name comes from the directory name, not the config file. Tools are accessed as:
-- `mcp__{server-name}__{tool_name}`
+1. **Protocol Version**: Must use `2024-11-05`
+2. **Transport**: STDIO only (no HTTP for Claude Desktop)
+3. **Logging**: File-based only, never stdout/stderr during operation
+4. **Paths**: Absolute paths required in configuration
+5. **Dependencies**: Shared venv for all servers
+6. **Registration**: Manual registration required for Claude Code CLI
 
 ## Debugging MCP Servers
 
 ### 1. Check Logs
 ```bash
-tail -f ~/.claude/mcp/{server-name}/logs/server_*.log
+tail -f ~/.claude/mcp/central/{server-name}/logs/server_*.log
 ```
 
-### 2. Test Server Directly
-```python
-# Test imports and basic functionality
-cd ~/.claude/mcp/{server-name}/bin
-../venv/bin/python3 -c "import server; print('Server imports OK')"
-```
-
-### 3. Verify Installation
+### 2. Test Server Manually
 ```bash
-# Check directory structure
-ls -la ~/.claude/mcp/{server-name}/
-# Should show: bin/ src/ venv/ logs/
+echo '{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05"},"id":1}' | \
+  ~/.claude/mcp/central/venv/bin/python ~/.claude/mcp/central/{server-name}/server.py
+```
 
-# Check server file
-ls -la ~/.claude/mcp/{server-name}/bin/server.py
-# Should be executable
+### 3. Test with Claude Code
+```bash
+# Enable debug mode
+claude --debug --dangerously-skip-permissions -p 'test'
 
-# Check venv
-~/.claude/mcp/{server-name}/venv/bin/python3 --version
-# Should show Python version
+# Look for MCP messages in output
+# ✅ "MCP server 'name': Connected successfully"
+# ❌ No MCP messages = servers not loaded
+```
+
+### 4. Verify Configuration
+```bash
+# For Claude Code CLI
+claude mcp list
+
+# Check if servers are registered
+# If not, add them manually
 ```
 
 ## Template for New Servers
@@ -269,10 +261,24 @@ ls -la ~/.claude/mcp/{server-name}/bin/server.py
 """Minimal MCP server template."""
 
 import asyncio
+import logging
+from datetime import datetime
+from pathlib import Path
+
 from mcp.server import Server
 from mcp.server.models import InitializationOptions
 from mcp.server.stdio import stdio_server
 from mcp.types import TextContent, Tool
+
+# Set up file logging only
+LOG_DIR = Path.home() / ".claude" / "mcp" / "central" / "my-server" / "logs"
+LOG_DIR.mkdir(parents=True, exist_ok=True)
+LOG_FILE = LOG_DIR / f"server_{datetime.now().strftime('%Y%m%d')}.log"
+
+logging.basicConfig(
+    level=logging.INFO,
+    handlers=[logging.FileHandler(LOG_FILE)]
+)
 
 async def main():
     server = Server("my-server")
@@ -316,18 +322,21 @@ if __name__ == "__main__":
 
 ## Common Pitfalls
 
-1. **Wrong installation path**: Must be in `~/.claude/mcp/{name}/bin/server.py`
-2. **Wrong file name**: Must be named `server.py`, not `mcp_whatever_server.py`
-3. **External dependencies**: Must use the server's own venv, not system or project venv
-4. **Manual configuration**: Don't add to claude_desktop_config.json
-5. **Import paths**: Must handle both package imports and direct execution
+1. **Wrong Protocol Version**: Must use `2024-11-05` (as of 2025)
+2. **STDIO Corruption**: Never write to stdout/stderr during operation
+3. **Path Issues**: Always use absolute paths in configuration
+4. **CLI vs Desktop**: Different registration methods required
+5. **Import Errors**: Ensure dependencies are in the correct venv
+6. **Permission Issues**: Use `--dangerously-skip-permissions` only for testing
 
 ## Summary
 
-The key insight is that Claude Desktop has a specific auto-discovery mechanism for MCP servers:
-1. Looks in `~/.claude/mcp/*/bin/server.py`
-2. Uses the directory name as the server name
-3. Expects each server to have its own isolated environment
-4. Does NOT use claude_desktop_config.json for these auto-discovered servers
+Key principles for working MCP servers:
+1. Use centralized installation with shared venv
+2. File-based logging only (never stdout/stderr)
+3. Proper protocol version and initialization
+4. Absolute paths in all configurations
+5. Different setup for Claude Desktop vs CLI
+6. Comprehensive testing and debugging procedures
 
-This is why the code-review server works (follows this pattern) while code-search doesn't (uses different structure).
+For complete examples, see the working `code-search` and `code-review` servers in this project.

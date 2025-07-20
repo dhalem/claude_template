@@ -40,7 +40,7 @@ class FileCollector:
         '.md', '.rst', '.txt'
     }
 
-    # Directories to exclude
+    # Directories to exclude (shared with code_indexer.py)
     EXCLUDED_DIRS = {
         '.git', 'node_modules', 'venv', '.venv', '__pycache__',
         'dist', 'build', 'target', '.pytest_cache', '.mypy_cache'

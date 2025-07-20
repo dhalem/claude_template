@@ -68,8 +68,9 @@ class ReviewFormatter:
                 with open(claude_md_path, encoding='utf-8') as f:
                     self.claude_md_content = f.read()
                     return
-            except Exception:
-                pass  # Fall back to files dict
+            except Exception as e:
+                logger.warning(f"Could not load CLAUDE.md from {claude_md_path}: {e}")
+                # Fall back to files dict
 
         # Try to find CLAUDE.md in files
         for file_path, content in files.items():

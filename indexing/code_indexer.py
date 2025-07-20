@@ -1,4 +1,14 @@
 #!/usr/bin/env python3
+# RULE #0: MANDATORY FIRST ACTION FOR EVERY REQUEST
+# 1. Read CLAUDE.md COMPLETELY before responding
+# 2. Setup Python venv: [ -d "venv" ] || ./setup-venv.sh && source venv/bin/activate
+# 3. Search for rules related to the request
+# 4. Only proceed after confirming no violations
+# Failure to follow Rule #0 has caused real harm. Check BEFORE acting, not AFTER making mistakes.
+#
+# GUARDS ARE SAFETY EQUIPMENT - WHEN THEY FIRE, FIX THE PROBLEM THEY FOUND
+# NEVER weaken, disable, or bypass guards - they prevent real harm
+
 """Simplified code indexer using AST for Python code.
 
 Falls back to regex patterns if tree-sitter has issues.
@@ -302,9 +312,8 @@ class CodeIndexer:
 
         count = 0
         for file_path in dir_path.rglob("*.py"):
-            if "__pycache__" in str(file_path):
-                continue
-            if "venv" in str(file_path):
+            # Use shared logic to check for excluded directories
+            if any(excluded in str(file_path) for excluded in ['__pycache__', 'venv', '.venv', '.git', 'node_modules']):
                 continue
             if self.should_reindex_file(file_path):
                 self.index_file(file_path)

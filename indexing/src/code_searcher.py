@@ -81,24 +81,35 @@ class CodeSearcher:
                 params = [f"%{pattern}%", limit]
 
             else:
-                sql = """
+                # Use structured query building with predefined templates
+                base_query = """
                     SELECT name, type, file_path, line_number, column,
                            parent, signature, docstring
                     FROM symbols
                     WHERE 1=1
                 """
+
+                conditions = []
                 params = []
 
+                # Add search conditions based on type
                 if search_type == "name":
-                    sql += " AND name LIKE ?"
+                    conditions.append("name LIKE ?")
                     params.append(pattern)
                 elif search_type == "content":
-                    sql += " AND (name LIKE ? OR docstring LIKE ? OR signature LIKE ?)"
+                    conditions.append("(name LIKE ? OR docstring LIKE ? OR signature LIKE ?)")
                     params.extend([f"%{pattern}%", f"%{pattern}%", f"%{pattern}%"])
 
+                # Add symbol type filter if specified
                 if symbol_type:
-                    sql += " AND type = ?"
+                    conditions.append("type = ?")
                     params.append(symbol_type)
+
+                # Build final query using structured approach
+                if conditions:
+                    sql = base_query + " AND " + " AND ".join(conditions)
+                else:
+                    sql = base_query
 
                 sql += " ORDER BY name, file_path LIMIT ?"
                 params.append(limit)

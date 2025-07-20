@@ -1,3 +1,13 @@
+# RULE #0: MANDATORY FIRST ACTION FOR EVERY REQUEST
+# 1. Read CLAUDE.md COMPLETELY before responding
+# 2. Setup Python venv: [ -d "venv" ] || ./setup-venv.sh && source venv/bin/activate
+# 3. Search for rules related to the request
+# 4. Only proceed after confirming no violations
+# Failure to follow Rule #0 has caused real harm. Check BEFORE acting, not AFTER making mistakes.
+#
+# GUARDS ARE SAFETY EQUIPMENT - WHEN THEY FIRE, FIX THE PROBLEM THEY FOUND
+# NEVER weaken, disable, or bypass guards - they prevent real harm
+
 """Gemini client for code review MCP server using official SDK.
 
 Refactored to use the google-generativeai SDK instead of requests.
@@ -15,13 +25,22 @@ logger = logging.getLogger(__name__)
 class GeminiClient:
     """Google Gemini API client for code review."""
 
-    def __init__(self, model: str = "gemini-1.5-flash"):
+    # Default pricing per 1K tokens (as of January 2025)
+    # WARNING: These prices may become outdated - check Google's current pricing
+    DEFAULT_PRICING = {
+        "flash": 0.000125,  # $0.125 per 1M tokens
+        "pro": 0.0025,      # $2.50 per 1M tokens
+    }
+
+    def __init__(self, model: str = "gemini-1.5-flash", custom_pricing: dict = None):
         """Initialize the Gemini client.
 
         Args:
             model: The Gemini model to use (default: gemini-1.5-flash)
+            custom_pricing: Custom pricing dict to override defaults (for updated pricing)
         """
         self.model_name = model
+        self.pricing = custom_pricing or self.DEFAULT_PRICING.copy()
 
         # Get API key
         api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
@@ -133,17 +152,11 @@ class GeminiClient:
         Returns:
             Dictionary with usage statistics
         """
-        # Pricing per 1K tokens (as of 2024)
-        pricing = {
-            "flash": 0.000125,  # $0.125 per 1M tokens
-            "pro": 0.0025,      # $2.50 per 1M tokens
-        }
-
-        # Determine pricing tier
+        # Determine pricing tier using configured pricing
         if "flash" in self.model_name.lower():
-            cost_per_1k_tokens = pricing["flash"]
+            cost_per_1k_tokens = self.pricing.get("flash", self.DEFAULT_PRICING["pro"])
         else:
-            cost_per_1k_tokens = pricing["pro"]
+            cost_per_1k_tokens = self.pricing.get("pro", self.DEFAULT_PRICING["pro"])
 
         estimated_cost = (self.total_tokens / 1000) * cost_per_1k_tokens
 
