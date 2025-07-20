@@ -197,10 +197,9 @@ repos:
     verbose: true
 - repo: local
   hooks:
-  - id: project-tests
-    name: Project Test Suite
-    entry: bash -c './run_tests.sh --indexing-only || pytest indexing/tests/ -x --tb=short || python -m pytest indexing/tests/
-      -x --tb=short || echo "No test runner found - configure in .pre-commit-config.yaml"'
+  - id: mandatory-full-test-suite
+    name: "\U0001F6A8 MANDATORY FULL TEST SUITE - ALL TESTS MUST PASS \U0001F6A8"
+    entry: bash -c './run_tests.sh'
     language: system
     types:
     - python
