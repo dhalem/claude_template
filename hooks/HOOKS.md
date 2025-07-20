@@ -221,12 +221,69 @@ GuardResult (allow/block with message)
 - **Type**: Blocking
 - **Exceptions**: `-r requirements.txt`, `--upgrade pip`, `--user`
 
-#### PythonVenvGuard 🆕
+#### PythonVenvGuard
 
 - **Triggers**: Python commands without venv
 - **Purpose**: Enforces virtual environment usage
 - **Type**: Blocking
 - **Exceptions**: `--version`, `-m venv`, venv paths
+
+#### AssumptionDetectionGuard
+
+- **Triggers**: Language suggesting assumptions ("probably", "might", "should work")
+- **Purpose**: Prevents assumption-based development
+- **Type**: Interactive
+- **Rule**: Forces explicit verification before proceeding
+
+#### FalseSuccessGuard
+
+- **Triggers**: Premature completion claims without verification
+- **Purpose**: Prevents claiming work is complete before testing
+- **Type**: Blocking
+- **Rule**: CLAUDE.md - "WE EXIST TO DELIVER WORKING SOFTWARE TO USERS"
+
+#### RuleZeroReminderGuard
+
+- **Triggers**: Creating new files without Rule #0 comment
+- **Purpose**: Ensures all files include mandatory Rule #0 header
+- **Type**: Blocking
+- **Rule**: CLAUDE.md - "EVERY FILE CREATED MUST INCLUDE RULE #0 REMINDER COMMENT"
+
+#### ConversationLogGuard
+
+- **Triggers**: Commands that modify conversation logs
+- **Purpose**: Protects conversation history from accidental modification
+- **Type**: Interactive
+
+#### EnvBypassGuard
+
+- **Triggers**: Environment variable bypasses (SKIP, NO_VERIFY)
+- **Purpose**: Prevents circumventing safety mechanisms
+- **Type**: Blocking
+
+#### DockerEnvGuard
+
+- **Triggers**: Docker environment manipulation
+- **Purpose**: Enforces proper container management
+- **Type**: Warning
+
+#### MetaCognitiveGuard
+
+- **Triggers**: Self-referential analysis patterns
+- **Purpose**: Prevents recursive analysis loops
+- **Type**: Blocking
+
+#### AbsolutePathCdGuard
+
+- **Triggers**: `cd` commands with relative paths
+- **Purpose**: Enforces absolute path usage for safety
+- **Type**: Warning
+
+#### CurlHeadRequestGuard
+
+- **Triggers**: curl commands without timeout/safety measures
+- **Purpose**: Prevents hanging requests
+- **Type**: Warning
 
 ### File Guards (`guards/file_guards.py`)
 
@@ -548,6 +605,13 @@ ls -la ~/.claude/
 ## Version History
 
 **UPDATE CHECKLIST**: Add entry when making changes!
+
+### v2.2 (2025-01-20): Test Protection System Design
+
+- Documented comprehensive test protection guard system design
+- Added 11 new guards discovered during audit: AssumptionDetectionGuard, FalseSuccessGuard, RuleZeroReminderGuard, ConversationLogGuard, EnvBypassGuard, DockerEnvGuard, MetaCognitiveGuard, AbsolutePathCdGuard, CurlHeadRequestGuard
+- Updated documentation to reflect current 27 guards in system
+- Prepared for test script integrity protection implementation
 
 ### v2.1 (2025-01-07): Git Hook Protection
 
