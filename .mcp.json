@@ -1,3 +1,20 @@
 {
-  "mcpServers": {}
+  "mcpServers": {
+    "code-search": {
+      "command": "/home/dhalem/.claude/mcp/central/venv/bin/python",
+      "args": [
+        "/home/dhalem/.claude/mcp/central/code-search/server.py"
+      ],
+      "env": {
+        "PYTHONPATH": "/home/dhalem/.claude/mcp/central/code-search"
+      }
+    },
+    "code-review": {
+      "command": "/home/dhalem/.claude/mcp/central/code-review-wrapper.sh",
+      "args": [],
+      "env": {
+        "PYTHONPATH": "/home/dhalem/.claude/mcp/central/code-review"
+      }
+    }
+  }
 }

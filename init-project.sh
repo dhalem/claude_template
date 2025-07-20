@@ -8,7 +8,7 @@ if [[ -z "$1" ]]; then
 fi
 
 PROJECT_NAME="$1"
-TEMPLATES_REPO="https://github.com/dhalem/claude_template.git"
+# TEMPLATES_REPO="https://github.com/dhalem/claude_template.git"  # Currently unused
 
 echo "🚀 Creating new project: $PROJECT_NAME"
 

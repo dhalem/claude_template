@@ -2,6 +2,22 @@
 
 Fast AI-powered code search, indexing, and review system for intelligent code navigation and analysis.
 
+## ⚠️ INSTALLATION SAFETY WARNING
+
+**CRITICAL: DO NOT USE install_mcp_*.sh SCRIPTS DIRECTLY!**
+
+Use ONLY the safe installation script from the project root:
+```bash
+cd ..  # Go to project root
+./safe_install.sh
+```
+
+**Why:** Multiple install scripts have caused Claude installation failures. The `safe_install.sh` script provides:
+- Full .claude directory backup
+- Centralized MCP server installation
+- Proper configuration management
+- Safe rollback procedures
+
 ## 🚀 Quick Start
 
 ### Docker Setup (Recommended)

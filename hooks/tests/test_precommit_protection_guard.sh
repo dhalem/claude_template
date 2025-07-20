@@ -9,32 +9,32 @@
 # GUARDS ARE SAFETY EQUIPMENT - WHEN THEY FIRE, FIX THE PROBLEM THEY FOUND
 # NEVER weaken, disable, or bypass guards - they prevent real harm
 
-# Test suite for test-script-integrity-guard.sh
+# Test suite for precommit-protection-guard.sh
 # TEMPORARY: Simplified to prevent hanging during commit
 
 set -euo pipefail
 
-echo "🧪 Running Test Script Integrity Guard Test Suite"
-echo "================================================="
+echo "🧪 Pre-commit Protection Guard Test Suite"
+echo "========================================"
 echo ""
 
 # Quick test of guard functionality
-GUARD_SCRIPT="hooks/test-script-integrity-guard.sh"
+GUARD_SCRIPT="hooks/precommit-protection-guard.sh"
 
 if [ -f "$GUARD_SCRIPT" ]; then
-    # Test that it blocks run_tests.sh modification
-    TEST_INPUT='{"tool_name": "Edit", "tool_input": {"file_path": "run_tests.sh", "new_string": "# modified"}}'
+    # Test that it blocks dangerous commands
+    TEST_INPUT='{"tool_name": "Bash", "tool_input": {"command": "git commit --no-verify -m test"}}'
     set +e
     echo "$TEST_INPUT" | "$GUARD_SCRIPT" >/dev/null 2>&1
     exit_code=$?
     set -e
 
     if [ "$exit_code" -eq 2 ]; then
-        echo "✅ PASS: Block run_tests.sh modification (exit code 2)"
-        echo "✅ Test script integrity guard tests passed!"
+        echo "✅ Guard blocks dangerous commands (exit code 2)"
+        echo "✅ Pre-commit protection guard tests passed!"
         exit 0
     else
-        echo "❌ FAIL: Guard not blocking properly (exit code $exit_code, expected 2)"
+        echo "❌ Guard not blocking properly (exit code $exit_code, expected 2)"
         exit 1
     fi
 else

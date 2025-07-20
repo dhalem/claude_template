@@ -87,6 +87,32 @@ python3 indexing/claude_code_search.py --help 2>/dev/null || echo "Code search n
 
 ---
 
+## ⚠️ INSTALLATION SAFETY WARNING
+
+**CRITICAL: USE ONLY THE OFFICIAL INSTALLATION METHOD**
+
+### The ONLY Safe Installation Script: `./safe_install.sh`
+- **NEVER create additional install scripts**
+- **NEVER modify ~/.claude directory without backup**
+- **ALWAYS use safe_install.sh for ALL component installations**
+
+### Why This Warning Exists
+Multiple install scripts and careless .claude modifications have destroyed Claude installations and caused data loss. The `safe_install.sh` script provides:
+- ✅ **Mandatory backup** of .claude directory before any changes
+- ✅ **Safe installation** with proper error handling
+- ✅ **Rollback instructions** if anything goes wrong
+- ✅ **User confirmation** before making changes
+
+### Installation Command
+```bash
+# For hooks and MCP servers installation:
+./safe_install.sh
+```
+
+**DO NOT use any other install-*.sh scripts you may find in subdirectories!**
+
+---
+
 ## What This Template Provides
 
 ### 🤖 AI Development Integration

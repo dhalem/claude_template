@@ -13,6 +13,7 @@ from .false_success_guard import FalseSuccessGuard
 from .file_guards import HookInstallationGuard, MockCodeGuard
 from .git_guards import GitCheckoutSafetyGuard, GitForcePushGuard, GitNoVerifyGuard, PreCommitConfigGuard
 from .git_hook_protection_guard import GitHookProtectionGuard
+from .install_script_prevention_guard import InstallScriptPreventionGuard
 from .lint_guards import LintGuard
 from .meta_cognitive_guard import MetaCognitiveGuard
 from .path_guards import AbsolutePathCdGuard, CurlHeadRequestGuard
@@ -33,6 +34,7 @@ __all__ = [
     "MockCodeGuard",
     "PreCommitConfigGuard",
     "HookInstallationGuard",
+    "InstallScriptPreventionGuard",
     "DirectoryAwarenessGuard",
     "PipInstallGuard",
     "PythonVenvGuard",

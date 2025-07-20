@@ -1,0 +1,264 @@
+#!/bin/bash
+# RULE #0: MANDATORY FIRST ACTION FOR EVERY REQUEST
+# 1. Read CLAUDE.md COMPLETELY before responding
+# 2. Setup Python venv: [ -d "venv" ] || ./setup-venv.sh && source venv/bin/activate
+# 3. Search for rules related to the request
+# 4. Only proceed after confirming no violations
+# Failure to follow Rule #0 has caused real harm. Check BEFORE acting, not AFTER making mistakes.
+#
+# GUARDS ARE SAFETY EQUIPMENT - WHEN THEY FIRE, FIX THE PROBLEM THEY FOUND
+# NEVER weaken, disable, or bypass guards - they prevent real harm
+
+# Pre-Install Hook Tests
+# Tests hooks in development environment before installation
+
+set -euo pipefail
+
+# Colors
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+NC='\033[0m'
+
+# Find directories
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+HOOKS_DIR="$(dirname "$SCRIPT_DIR")"
+PROJECT_ROOT="$(dirname "$HOOKS_DIR")"
+PYTHON_DIR="$HOOKS_DIR/python"
+
+# Test counters
+TESTS_PASSED=0
+TESTS_FAILED=0
+
+# Find Python
+PYTHON_CMD="python3"
+if [ -f "$PROJECT_ROOT/venv/bin/python3" ]; then
+    PYTHON_CMD="$PROJECT_ROOT/venv/bin/python3"
+fi
+
+# Test function
+run_test() {
+    local test_name="$1"
+    local test_command="$2"
+    local expected_exit="$3"
+
+    echo -n "  $test_name: "
+
+    set +e
+    # Use timeout to prevent hanging
+    timeout 10 bash -c "$test_command" >/dev/null 2>&1
+    local actual_exit=$?
+    set -e
+
+    # Handle timeout (exit code 124)
+    if [ "$actual_exit" -eq 124 ]; then
+        echo -e "${RED}❌ FAIL${NC} (test timed out)"
+        ((TESTS_FAILED++))
+    elif [ "$actual_exit" -eq "$expected_exit" ]; then
+        echo -e "${GREEN}✅ PASS${NC}"
+        ((TESTS_PASSED++))
+    else
+        echo -e "${RED}❌ FAIL${NC} (expected exit $expected_exit, got $actual_exit)"
+        ((TESTS_FAILED++))
+    fi
+}
+
+echo "🧪 Pre-Install Hook Tests"
+echo "========================="
+echo ""
+
+# Test Python main.py stdin handling
+echo "1️⃣ Testing Python main.py stdin handling"
+echo "-----------------------------------------"
+
+if [ -f "$PYTHON_DIR/main.py" ]; then
+    # Test with valid JSON from stdin
+    run_test "Valid JSON input" \
+        "echo '{\"tool_name\":\"Read\",\"tool_input\":{\"file_path\":\"test.txt\"}}' | $PYTHON_CMD $PYTHON_DIR/main.py adaptive" \
+        0
+
+    # Test with empty stdin (using /dev/null to prevent hanging)
+    run_test "Empty stdin" \
+        "$PYTHON_CMD $PYTHON_DIR/main.py adaptive < /dev/null" \
+        1
+
+    # Test with malformed JSON
+    run_test "Malformed JSON" \
+        "echo 'not json' | $PYTHON_CMD $PYTHON_DIR/main.py adaptive" \
+        1
+
+    # Test with JSON from command line (should also work)
+    run_test "JSON as argument" \
+        "$PYTHON_CMD $PYTHON_DIR/main.py adaptive '{\"tool_name\":\"Read\",\"tool_input\":{\"file_path\":\"test.txt\"}}'" \
+        0
+else
+    echo -e "${RED}  Python main.py not found${NC}"
+    ((TESTS_FAILED++))
+fi
+
+echo ""
+
+# Test shell wrapper scripts
+echo "2️⃣ Testing shell wrapper scripts"
+echo "---------------------------------"
+
+# Test adaptive-guard.sh
+if [ -f "$HOOKS_DIR/adaptive-guard.sh" ]; then
+    echo "  Testing adaptive-guard.sh:"
+
+    run_test "Valid input" \
+        "echo '{\"tool_name\":\"Read\",\"tool_input\":{\"file_path\":\"test.txt\"}}' | $HOOKS_DIR/adaptive-guard.sh" \
+        0
+
+    run_test "Empty input" \
+        "echo '' | $HOOKS_DIR/adaptive-guard.sh" \
+        1
+
+    run_test "Git no-verify block" \
+        "echo '{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git commit --no-verify -m test\"}}' | $HOOKS_DIR/adaptive-guard.sh" \
+        1
+else
+    echo -e "${RED}  adaptive-guard.sh not found${NC}"
+    ((TESTS_FAILED++))
+fi
+
+# Test lint-guard.sh
+if [ -f "$HOOKS_DIR/lint-guard.sh" ]; then
+    echo "  Testing lint-guard.sh:"
+
+    run_test "Valid Python file" \
+        "echo '{\"tool_name\":\"Write\",\"tool_input\":{\"file_path\":\"test.py\",\"content\":\"print(\\\"hello\\\")\"}}' | $HOOKS_DIR/lint-guard.sh" \
+        0
+
+    run_test "Empty input" \
+        "echo '' | $HOOKS_DIR/lint-guard.sh" \
+        1
+else
+    echo -e "${RED}  lint-guard.sh not found${NC}"
+    ((TESTS_FAILED++))
+fi
+
+echo ""
+
+# Test protection guards
+echo "3️⃣ Testing protection guards"
+echo "-----------------------------"
+
+# Test test-script-integrity-guard.sh
+if [ -f "$HOOKS_DIR/test-script-integrity-guard.sh" ]; then
+    echo "  Testing test-script-integrity-guard.sh:"
+
+    run_test "Block run_tests.sh edit" \
+        "echo '{\"tool_name\":\"Edit\",\"tool_input\":{\"file_path\":\"run_tests.sh\",\"new_string\":\"# modified\"}}' | $HOOKS_DIR/test-script-integrity-guard.sh" \
+        2
+
+    run_test "Allow normal file edit" \
+        "echo '{\"tool_name\":\"Edit\",\"tool_input\":{\"file_path\":\"normal.py\",\"new_string\":\"# code\"}}' | $HOOKS_DIR/test-script-integrity-guard.sh" \
+        0
+else
+    echo -e "${RED}  test-script-integrity-guard.sh not found${NC}"
+    ((TESTS_FAILED++))
+fi
+
+# Test precommit-protection-guard.sh
+if [ -f "$HOOKS_DIR/precommit-protection-guard.sh" ]; then
+    echo "  Testing precommit-protection-guard.sh:"
+
+    run_test "Block --no-verify" \
+        "echo '{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git commit --no-verify -m test\"}}' | $HOOKS_DIR/precommit-protection-guard.sh" \
+        2
+
+    run_test "Allow regular commit" \
+        "echo '{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git commit -m test\"}}' | $HOOKS_DIR/precommit-protection-guard.sh" \
+        0
+else
+    echo -e "${RED}  precommit-protection-guard.sh not found${NC}"
+    ((TESTS_FAILED++))
+fi
+
+# Test anti-bypass-pattern-guard.py
+if [ -f "$HOOKS_DIR/anti-bypass-pattern-guard.py" ]; then
+    echo "  Testing anti-bypass-pattern-guard.py:"
+
+    run_test "Block @pytest.mark.skip" \
+        "echo '{\"tool_name\":\"Edit\",\"tool_input\":{\"file_path\":\"test.py\",\"new_string\":\"@pytest.mark.skip\"}}' | $PYTHON_CMD $HOOKS_DIR/anti-bypass-pattern-guard.py" \
+        2
+
+    run_test "Allow normal code" \
+        "echo '{\"tool_name\":\"Edit\",\"tool_input\":{\"file_path\":\"test.py\",\"new_string\":\"def test(): pass\"}}' | $PYTHON_CMD $HOOKS_DIR/anti-bypass-pattern-guard.py" \
+        0
+else
+    echo -e "${RED}  anti-bypass-pattern-guard.py not found${NC}"
+    ((TESTS_FAILED++))
+fi
+
+echo ""
+
+# Test Python hook system
+echo "4️⃣ Testing Python hook system"
+echo "------------------------------"
+
+if [ -f "$PYTHON_DIR/tests/run_tests.py" ]; then
+    echo "  Running Python hook tests..."
+    if $PYTHON_CMD "$PYTHON_DIR/tests/run_tests.py" >/dev/null 2>&1; then
+        echo -e "  ${GREEN}✅ Python tests passed${NC}"
+        ((TESTS_PASSED++))
+    else
+        echo -e "  ${RED}❌ Python tests failed${NC}"
+        ((TESTS_FAILED++))
+    fi
+else
+    echo -e "${RED}  Python test runner not found${NC}"
+    ((TESTS_FAILED++))
+fi
+
+echo ""
+
+# Test critical stdin handling
+echo "5️⃣ Testing critical stdin handling"
+echo "-----------------------------------"
+
+# Create a test to ensure stdin works with heredoc
+test_stdin_heredoc() {
+    local hook="$1"
+    local name="$2"
+
+    if [ -f "$hook" ]; then
+        echo -n "  $name with heredoc: "
+
+        set +e
+        $hook >/dev/null 2>&1 << 'EOF'
+{"tool_name":"Read","tool_input":{"file_path":"test.txt"}}
+EOF
+        local exit_code=$?
+        set -e
+
+        if [ $exit_code -eq 0 ]; then
+            echo -e "${GREEN}✅ PASS${NC}"
+            ((TESTS_PASSED++))
+        else
+            echo -e "${RED}❌ FAIL${NC} (stdin handling broken)"
+            ((TESTS_FAILED++))
+        fi
+    fi
+}
+
+test_stdin_heredoc "$HOOKS_DIR/adaptive-guard.sh" "adaptive-guard.sh"
+test_stdin_heredoc "$HOOKS_DIR/lint-guard.sh" "lint-guard.sh"
+
+echo ""
+echo "📊 Pre-Install Test Results:"
+echo "✅ Passed: $TESTS_PASSED"
+echo "❌ Failed: $TESTS_FAILED"
+echo "📝 Total:  $((TESTS_PASSED + TESTS_FAILED))"
+
+if [ $TESTS_FAILED -eq 0 ]; then
+    echo ""
+    echo -e "${GREEN}🎉 All pre-install tests passed!${NC}"
+    echo "Hooks are ready for installation."
+    exit 0
+else
+    echo ""
+    echo -e "${RED}❌ Pre-install tests failed.${NC}"
+    echo "Fix issues before installing hooks."
+    exit 1
+fi

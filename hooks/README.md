@@ -2,6 +2,22 @@
 
 🛡️ **Comprehensive safety hook system for Claude Code that prevents costly mistakes**
 
+## ⚠️ INSTALLATION SAFETY WARNING
+
+**CRITICAL: DO NOT USE install-hooks.sh DIRECTLY!**
+
+Use ONLY the safe installation script from the project root:
+```bash
+cd ..  # Go to project root
+./safe_install.sh
+```
+
+**Why:** Direct hook installation without proper backup has destroyed Claude installations. The `safe_install.sh` script ensures:
+- Full backup of .claude directory
+- Safe installation procedure
+- Proper error handling
+- Rollback capability
+
 ## Quick Start
 
 ```bash

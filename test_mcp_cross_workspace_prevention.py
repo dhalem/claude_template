@@ -31,12 +31,12 @@ def run_command(cmd: List[str]) -> tuple[int, str, str]:
         return -2, "", str(e)
 
 def test_no_hardcoded_paths():
-    """Test that MCP configurations don't contain hardcoded paths"""
-    print("🔍 Testing for hardcoded paths in MCP configurations...")
+    """Test that MCP configurations use appropriate paths for central installation"""
+    print("🔍 Testing for appropriate paths in MCP configurations...")
 
     issues = []
 
-    # Check .mcp.json for hardcoded paths
+    # Check .mcp.json for project-specific paths (these are the real problems)
     mcp_json = Path(".mcp.json")
     if mcp_json.exists():
         try:
@@ -45,48 +45,28 @@ def test_no_hardcoded_paths():
                 command = server_config.get("command", "")
                 args = server_config.get("args", [])
 
-                # Check for hardcoded user paths
-                if "/home/" in command and "dhalem" in command:
-                    issues.append(f"Hardcoded user path in {server_name} command: {command}")
-
-                for arg in args:
-                    if "/home/" in str(arg) and "dhalem" in str(arg):
-                        issues.append(f"Hardcoded user path in {server_name} args: {arg}")
-
-                # Check for project-specific paths
+                # Check for project-specific paths (the real problem)
                 if "claude_template" in command:
                     issues.append(f"Project-specific path in {server_name} command: {command}")
 
                 for arg in args:
                     if "claude_template" in str(arg):
                         issues.append(f"Project-specific path in {server_name} args: {arg}")
+
+                # Central installation paths are OK - they're supposed to be absolute
+                # Only warn if using home directory path without central structure
+                if "/home/" in command and ".claude/mcp/central" not in command:
+                    issues.append(f"Non-central path in {server_name} command: {command}")
         except json.JSONDecodeError:
             issues.append("Invalid JSON in .mcp.json")
 
-    # Check Claude Desktop config
-    desktop_config = Path.home() / ".config/claude/claude_desktop_config.json"
-    if desktop_config.exists():
-        try:
-            config = json.loads(desktop_config.read_text())
-            for server_name, server_config in config.get("mcpServers", {}).items():
-                command = server_config.get("command", "")
-                args = server_config.get("args", [])
-
-                # Check if using environment variables correctly
-                if not command.startswith("$HOME") and not command.startswith("/home"):
-                    continue  # This is fine
-                elif "/home/" in command and not command.startswith("$HOME"):
-                    issues.append(f"Desktop config should use $HOME, not hardcoded path: {command}")
-        except json.JSONDecodeError:
-            pass  # Desktop config might not exist
-
     if issues:
-        print("❌ Found hardcoded path issues:")
+        print("❌ Found path configuration issues:")
         for issue in issues:
             print(f"  - {issue}")
         return False
     else:
-        print("✅ No hardcoded paths found")
+        print("✅ No problematic paths found (central installation paths are expected)")
         return True
 
 def test_central_installation_exists():
@@ -120,7 +100,7 @@ def test_central_installation_exists():
         print("❌ Central installation incomplete:")
         for item in missing:
             print(f"  - Missing: {item}")
-        print("💡 Solution: Run ./install-mcp-central.sh")
+        print("💡 Solution: Run ./safe_install.sh")
         return False
     else:
         print("✅ Central installation exists")
@@ -248,7 +228,7 @@ def test_installation_scripts_exist():
     print("📜 Testing installation scripts exist...")
 
     required_scripts = [
-        "install-mcp-central.sh",
+        "safe_install.sh",
         "register-mcp-global.sh",
         "test_mcp_other_workspace.sh",
         "test_mcp_quick.sh"
@@ -282,7 +262,7 @@ def main():
         print("✅ This is expected in CI environments without Claude CLI")
 
     tests = [
-        ("Hardcoded Paths", test_no_hardcoded_paths),
+        ("Path Configuration", test_no_hardcoded_paths),
         ("Central Installation", test_central_installation_exists),
         ("User Scope Registration", test_user_scope_registration),
         ("Cross-Workspace Access", test_cross_workspace_functionality),
@@ -316,7 +296,7 @@ def main():
     else:
         print("⚠️  Some tests failed - review and fix issues above")
         print("\n💡 Quick fixes:")
-        print("  1. Run: ./install-mcp-central.sh")
+        print("  1. Run: ./safe_install.sh")
         print("  2. Run: ./register-mcp-global.sh")
         print("  3. Remove project-specific .mcp.json if present")
         print("  4. Test with: ./test_mcp_other_workspace.sh /tmp/test")

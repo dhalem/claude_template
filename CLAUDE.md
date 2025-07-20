@@ -15,6 +15,7 @@
 ## 📋 MANDATORY POSTMORTEMS TO READ
 **These postmortems document real failures. READ THEM to avoid repeating these mistakes:**
 - **[MCP Test Failure Postmortem](POSTMORTEM_MCP_TEST_FAILURE_20250119.md)** - Critical lesson: ALWAYS run full test suite (`./run_tests.sh`), not just subset
+- **[Claude Installation Failure Postmortem](POSTMORTEM_CLAUDE_INSTALLATION_FAILURE_20250120.md)** - Critical lesson: NEVER create multiple install scripts, ALWAYS use safe_install.sh
 
 ## 📝 RULE #0 COMMENT REQUIREMENT
 **EVERY FILE CREATED MUST INCLUDE RULE #0 REMINDER COMMENT**
@@ -37,6 +38,39 @@
 - NO adding `stages: [manual]` to bypass
 - NO using `--no-verify` flag
 - NO disabling hooks "temporarily"
+
+## 🚨 INSTALLATION SAFETY - USE ONLY safe_install.sh
+**CRITICAL: ONLY ONE INSTALL SCRIPT SHOULD EXIST**
+
+**THE ONLY INSTALL SCRIPT**: `./safe_install.sh`
+- **NEVER create more install scripts**
+- **NEVER modify .claude directory without backup**
+- **ALWAYS use safe_install.sh for ALL installations**
+
+**WHY THIS RULE EXISTS:**
+- Multiple install scripts caused confusion and system damage
+- Direct .claude modifications destroyed Claude installations
+- Lack of backups made recovery impossible
+- Users lost work due to careless installation procedures
+
+**safe_install.sh GUARANTEES:**
+1. **MANDATORY BACKUP** of entire .claude directory with timestamp
+2. **SAFE INSTALLATION** of hooks (python-only approach)
+3. **CENTRAL MCP SERVERS** properly configured
+4. **ROLLBACK INSTRUCTIONS** if anything goes wrong
+5. **USER CONFIRMATION** before any changes
+
+**FORBIDDEN ACTIONS:**
+- Creating new install scripts (install-*.sh)
+- Directly modifying ~/.claude without backup
+- Using rm -rf on Claude directories
+- Installing without user confirmation
+- Bypassing safe_install.sh
+
+**ENFORCEMENT:**
+- InstallScriptPreventionGuard blocks creation of any install scripts except safe_install.sh
+- Pre-commit hook scans for and blocks unauthorized install scripts
+- Violations result in immediate blocking with clear error messages
 
 ## 🚨 GUARD VIOLATION = IMMEDIATE STOP
 **GUARDS ARE SAFETY EQUIPMENT - WHEN THEY FIRE, THEY'VE FOUND A REAL PROBLEM**
@@ -220,6 +254,8 @@ See `CLAUDE.local.md` for project-specific guidelines.
 
 ## Hook System Safety
 
+**📚 MANDATORY: Read `hooks/HOOKS.md` BEFORE working with hooks!**
+
 This template includes a comprehensive hook system that:
 - Prevents dangerous operations (git --no-verify, docker restart)
 - Enforces best practices (venv usage, code search)
@@ -227,11 +263,40 @@ This template includes a comprehensive hook system that:
 - Blocks false success claims
 - Requires Rule #0 comments in new files
 
+**Before modifying, installing, or debugging hooks:**
+1. **READ `hooks/HOOKS.md`** - Complete documentation of hook system
+2. **UNDERSTAND hook events** - PreToolUse, PostToolUse, etc.
+3. **KNOW exit codes** - 0=allow, 2=block, other=error
+4. **TEST thoroughly** - Hooks are critical safety infrastructure
+
 To install hooks safely:
 ```bash
+# ALWAYS use safe_install.sh for complete installation
+./safe_install.sh  # Backs up .claude before ANY changes
+
+# Or for hooks only:
 cd hooks
 ./install-hooks-python-only.sh  # SAFE - only updates Python directory
 ```
+
+### Critical Hook Troubleshooting
+
+**VERIFY HOOKS ARE WORKING:**
+```bash
+# Quick test - this SHOULD be blocked:
+echo "test" > ~/.claude/test.txt
+# If you see "DIRECT HOOK MODIFICATION BLOCKED", hooks are active!
+
+# Test specific guard:
+git commit --no-verify -m "test"
+# Should see "SECURITY ALERT: Git --no-verify detected!"
+```
+
+**COMMON ISSUES:**
+1. **Settings Location**: Must be `~/.claude/settings.json` (NOT userSettings.json)
+2. **Invalid Keys**: Remove `_documentation` or other non-standard keys
+3. **Debug Mode**: Use `claude --debug -p "test" 2>&1 | grep -i "hook"`
+4. **Direct Test**: `echo '{"tool": "Bash", "toolInput": {"command": "git commit --no-verify"}}' | ~/.claude/adaptive-guard.sh`
 
 ## Override System
 
@@ -385,12 +450,26 @@ If using Claude Code CLI, you MUST first register servers:
 # Check if servers are already configured
 claude mcp list
 
-# If not listed, add them manually
+# If not listed, add them from .mcp.json automatically:
+cat .mcp.json | jq -r '.mcpServers | to_entries[] | "claude mcp add \(.key) \(.value.command) \(.value.args | join(" "))"' | bash
+
+# Or add them manually:
 claude mcp add code-search ~/.claude/mcp/central/venv/bin/python ~/.claude/mcp/central/code-search/server.py
 claude mcp add code-review ~/.claude/mcp/central/venv/bin/python ~/.claude/mcp/central/code-review/server.py
 
 # Verify they were added
 claude mcp list
+```
+
+#### CRITICAL: Environment Variable Issues
+
+**GEMINI_API_KEY vs GOOGLE_API_KEY**:
+- MCP servers expect `GEMINI_API_KEY`
+- If you only have `GOOGLE_API_KEY`, create wrapper script:
+```bash
+#!/bin/bash
+export GEMINI_API_KEY="${GOOGLE_API_KEY}"
+exec /path/to/venv/bin/python /path/to/server.py "$@"
 ```
 
 #### Common Problems and Solutions
@@ -596,6 +675,77 @@ Tests are automatically run by:
 - `MCP_CROSS_WORKSPACE_SETUP.md` - Set up servers for all workspaces
 - `MCP_KEY_LEARNINGS.md` - Critical discoveries and lessons learned
 - `indexing/MCP_SERVER_GUIDE.md` - Implementation details
+
+## 🧪 MANDATORY HOOK TESTING REQUIREMENTS
+
+**ALL HOOKS MUST HAVE COMPREHENSIVE TESTS - NO EXCEPTIONS**
+
+**📚 FIRST: Read `hooks/HOOKS.md` for complete hook documentation**
+
+### Critical Testing Mandate
+1. **EVERY HOOK MUST BE TESTED** - No hook without comprehensive tests
+2. **TESTS MUST RUN IN EVERY BUILD** - Integrated into `run_tests.sh`
+3. **NEVER SKIP HOOK TESTS** - They protect critical safety infrastructure
+4. **TEST STDIN HANDLING** - The #1 cause of hook failures
+5. **ADD TEST FOR EVERY NEW HOOK** - No exceptions
+6. **UNDERSTAND HOOK ARCHITECTURE** - Read `hooks/HOOKS.md` before making changes
+
+### Required Test Categories
+
+#### Pre-Install Tests (`hooks/tests/test_hooks_pre_install.sh`)
+- Test each hook with valid input
+- Test each hook with invalid input
+- Test each hook with empty input
+- Test stdin handling with heredoc
+- Test exit codes (0=allow, 1=error, 2=block)
+
+#### Python Hook Tests (`hooks/python/tests/`)
+- Unit tests for all Python guards
+- Integration tests for guard system
+- Mock testing for Claude input parsing
+- Exit code verification
+
+#### Protection Guard Tests
+- `test-script-integrity-guard.sh` - Protects test scripts
+- `precommit-protection-guard.sh` - Prevents bypass attempts
+- `anti-bypass-pattern-guard.py` - Blocks test skipping patterns
+
+#### Post-Install Tests (if hooks installed)
+- Test installed hooks in `~/.claude`
+- Test stdin handling after installation
+- Test override mechanisms
+- Test logging functionality
+
+### Integration with run_tests.sh
+
+Hook tests are **MANDATORY** and run as part of the full test suite:
+
+```bash
+# Run hook tests - MUST PASS (critical safety infrastructure)
+if ! test_hooks; then
+    log_error "Hook tests FAILED - blocking commit"
+    exit 1
+fi
+```
+
+### Enforcement
+- **test-script-integrity-guard.sh** protects hook test files
+- **precommit-protection-guard.sh** prevents bypassing tests
+- **anti-bypass-pattern-guard.py** blocks test skipping patterns
+- **Pre-commit hooks** run tests automatically
+
+### Historical Context
+Hook stdin handling was broken because:
+- Python main.py expected stdin but got empty string
+- No tests caught this regression
+- Hooks failed silently in production
+
+**This MUST NEVER happen again.**
+
+### Documentation
+- `HOOK_TEST_REQUIREMENTS.md` - Complete testing requirements
+- `hooks/tests/` - All test implementations
+- Hook tests are **critical safety infrastructure**
 
 ---
 

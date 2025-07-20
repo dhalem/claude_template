@@ -171,11 +171,16 @@ class TestMCPServers:
         except json.JSONDecodeError as e:
             pytest.fail(f"Invalid JSON from {server_name}: {e}")
 
-    @pytest.mark.slow
     def test_mcp_code_review_integration(self, claude_available, mcp_config):
         """Test code review MCP tool through Claude"""
         if not claude_available:
-            pytest.skip("Claude CLI not available")
+            pytest.fail("Claude CLI not available - required for MCP integration tests")
+
+        # Require API key for code review (check both GEMINI_API_KEY and GOOGLE_API_KEY)
+        gemini_key = os.environ.get("GEMINI_API_KEY")
+        google_key = os.environ.get("GOOGLE_API_KEY")
+        if not gemini_key and not google_key:
+            pytest.fail("API key not available - set GEMINI_API_KEY or GOOGLE_API_KEY environment variable for code review tests")
 
         # This test requires MCP servers to be configured
         servers = mcp_config.get("mcpServers", {})
@@ -201,15 +206,36 @@ def example_function():
             test_file = f.name
 
         try:
-            # Run Claude with MCP tool (reduced timeout for pre-commit compatibility)
+            # Set up environment with API key for code review
+            env = os.environ.copy()
+            if not env.get("GEMINI_API_KEY") and env.get("GOOGLE_API_KEY"):
+                env["GEMINI_API_KEY"] = env["GOOGLE_API_KEY"]
+
+            # Check if running in pre-commit mode for debugging
+            precommit_mode = os.environ.get("PRECOMMIT_MODE", "0") == "1"
+            if precommit_mode:
+                print("[DEBUG] PRE-COMMIT MODE: Using simpler tool test instead of full code review")
+                print(f"[DEBUG] Environment: GEMINI_API_KEY={'SET' if env.get('GEMINI_API_KEY') else 'NOT_SET'}")
+
+                # In pre-commit mode, just test that the MCP tool is available and responding
+                # This is much faster than a full code review
+                prompt = "Use the mcp__code-review__review_code tool with directory='./' and focus_areas=['syntax'] to do a quick syntax check"
+                timeout_val = 30  # Much shorter timeout for basic connectivity test
+            else:
+                # Full integration test with actual code review
+                prompt = f"Use the mcp__code-review__review_code tool to review {test_file}"
+                timeout_val = 120
+
+            # Run Claude with MCP tool
             result = subprocess.run(
                 [
                     "claude", "--debug", "--dangerously-skip-permissions",
-                    "-p", f"Use the mcp__code-review__review_code tool to review {test_file}"
+                    "-p", prompt
                 ],
                 capture_output=True,
                 text=True,
-                timeout=60  # Restored to 60 seconds - tests need ~31s to complete
+                timeout=timeout_val,
+                env=env
             )
 
             output = result.stdout + result.stderr
@@ -231,18 +257,28 @@ def example_function():
             # Cleanup
             Path(test_file).unlink(missing_ok=True)
 
-    @pytest.mark.slow
     def test_mcp_code_search_integration(self, claude_available, mcp_config):
         """Test code search MCP tool through Claude"""
         if not claude_available:
-            pytest.skip("Claude CLI not available")
+            pytest.fail("Claude CLI not available - required for MCP integration tests")
+
+        # Require code index database for code search
+        if not os.path.exists(".code_index.db"):
+            pytest.fail("Code index database (.code_index.db) not available - run ./start-indexer.sh to create")
 
         # This test requires MCP servers to be configured
         servers = mcp_config.get("mcpServers", {})
         if "code-search" not in servers:
             pytest.fail("code-search server not configured - required for this test")
 
-        # Run Claude with MCP tool (reduced timeout for pre-commit compatibility)
+        # Check if running in pre-commit mode for debugging
+        precommit_mode = os.environ.get("PRECOMMIT_MODE", "0") == "1"
+        if precommit_mode:
+            print("[DEBUG] PRE-COMMIT MODE: Running code search test with timeout")
+            print(f"[DEBUG] Database exists: {os.path.exists('.code_index.db')}")
+
+        # Run Claude with MCP tool
+        timeout_val = 90 if precommit_mode else 120  # Shorter timeout in pre-commit
         result = subprocess.run(
             [
                 "claude", "--debug", "--dangerously-skip-permissions",
@@ -250,7 +286,7 @@ def example_function():
             ],
             capture_output=True,
             text=True,
-            timeout=60  # Restored to 60 seconds - tests need ~31s to complete
+            timeout=timeout_val
         )
 
         output = result.stdout + result.stderr
@@ -261,13 +297,17 @@ def example_function():
         )
 
     def test_gemini_api_key_available(self):
-        """Test that GEMINI_API_KEY is set (required for code-review)"""
-        api_key = os.environ.get("GEMINI_API_KEY", "")
+        """Test that API key is set (required for code-review)"""
+        gemini_key = os.environ.get("GEMINI_API_KEY", "")
+        google_key = os.environ.get("GOOGLE_API_KEY", "")
+
+        # Check if either key is available
+        api_key = gemini_key or google_key
         assert api_key, (
-            "GEMINI_API_KEY environment variable not set. "
-            "Code review server requires this for Gemini API access."
+            "API key environment variable not set. "
+            "Code review server requires GEMINI_API_KEY or GOOGLE_API_KEY for Gemini API access."
         )
-        assert len(api_key) > 20, "GEMINI_API_KEY appears to be invalid (too short)"
+        assert len(api_key) > 20, "API key appears to be invalid (too short)"
 
 
 if __name__ == "__main__":

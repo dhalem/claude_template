@@ -42,18 +42,131 @@ These hooks prevent these specific mistakes from happening again.
 
 ## Hook System Architecture
 
-### Evolution: Shell to Python
+### Claude Code Hook Execution Flow
 
-The hook system has evolved from simple shell scripts to a comprehensive Python-based framework:
+Based on official Claude documentation, hooks integrate into Claude's execution flow as follows:
 
 ```text
-Original (Shell):
-Claude Code Tool Call → Shell Script → Allow/Block
+Claude Code Execution Flow:
+1. User submits prompt → UserPromptSubmit hook
+2. Claude prepares to use tool → PreToolUse hook
+3. Tool executes
+4. Tool completes → PostToolUse hook
+5. Claude sends notification → Notification hook
+6. Agent completes work → Stop hook
+7. Subagent completes → SubagentStop hook
+8. Context needs compaction → PreCompact hook
+```
 
-Current (Python):
+### Hook Configuration Structure
+
+Hooks are configured in `~/.claude/settings.json` with the following structure:
+
+```json
+{
+  "hooks": {
+    "EventName": [
+      {
+        "matcher": "ToolPattern",  // Regex or exact match
+        "hooks": [
+          {
+            "type": "command",
+            "command": "path/to/script.sh",
+            "timeout": 60  // Optional, defaults to 60 seconds
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+### Available Hook Events
+
+1. **PreToolUse**: Runs before tool execution
+   - Can block tool execution with exit code 2
+   - Receives tool name and input parameters
+
+2. **PostToolUse**: Runs after tool completes
+   - Can "block" the tool call with a reason for Claude
+   - Receives tool response in addition to input
+
+3. **UserPromptSubmit**: Runs when user submits a prompt
+   - Can modify or block prompt processing
+
+4. **Notification**: Triggered by system notifications
+
+5. **Stop**: Runs when main agent finishes
+
+6. **SubagentStop**: Runs when subagent finishes
+
+7. **PreCompact**: Runs before context compaction
+
+### Available Tools for Matching
+
+The following tools can be matched in hook configurations:
+- `Task` - Agent/subagent creation
+- `Bash` - Shell command execution
+- `Glob` - File pattern matching
+- `Grep` - Text search
+- `Read` - File reading
+- `Edit` - File editing
+- `MultiEdit` - Multiple file edits
+- `Write` - File writing
+- `WebFetch` - Web content fetching
+- `WebSearch` - Web searching
+
+### Hook Input Data (stdin)
+
+Hooks receive JSON input via stdin with this structure:
+
+```json
+{
+  "session_id": "unique-session-id",
+  "transcript_path": "/path/to/conversation.jsonl",
+  "cwd": "/current/working/directory",
+  "hook_event_name": "PreToolUse",
+  "tool_name": "Bash",  // For tool-related events
+  "tool_input": {       // Tool-specific parameters
+    "command": "docker restart"
+  },
+  "tool_response": {    // For PostToolUse only
+    "output": "command output"
+  }
+}
+```
+
+### Exit Code Behavior
+
+Claude Code interprets hook exit codes as follows:
+
+- **Exit 0**: Success - stdout is shown in transcript
+- **Exit 2**: Blocking error - stderr is fed back to Claude, operation blocked
+- **Other codes**: Non-blocking error - stderr shown to user, operation continues
+
+### JSON Output Control
+
+Hooks can output JSON to control Claude's behavior:
+
+```json
+{
+  "continue": false,           // Whether Claude continues (default: true)
+  "stopReason": "Security violation detected",  // Message when continue=false
+  "suppressOutput": true       // Hide stdout from transcript (default: false)
+}
+```
+
+### Evolution: Shell to Python
+
+This project has evolved from simple shell scripts to a comprehensive Python-based framework:
+
+```text
+Current Implementation:
 Claude Code Tool Call
         ↓
 settings.json Hook Configuration
+        ↓
+Shell Wrapper (adaptive-guard.sh)
         ↓
 Python Main Entry (main.py)
         ↓
@@ -63,17 +176,18 @@ Individual Guard Classes
         ↓
 User Interaction (if needed)
         ↓
-GuardResult (allow/block with message)
+GuardResult (exit code 0 or 2)
 ```
 
 ### Key Components
 
 1. **settings.json**: Configures which scripts run for which tools
-2. **main.py**: Entry point that parses input and runs guards
-3. **registry.py**: Manages guard registration for different tools
-4. **base_guard.py**: Base class all guards inherit from
-5. **guards/**: Individual guard implementations
-6. **utils/**: Helper functions for parsing and patterns
+2. **adaptive-guard.sh**: Shell wrapper that calls Python implementation
+3. **main.py**: Entry point that parses JSON input and runs guards
+4. **registry.py**: Manages guard registration for different tools
+5. **base_guard.py**: Base class all guards inherit from
+6. **guards/**: Individual guard implementations
+7. **utils/**: Helper functions for parsing and patterns
 
 ## Quick Installation
 
@@ -85,14 +199,22 @@ GuardResult (allow/block with message)
 
 ### Installation Steps
 
+**⚠️ CRITICAL SAFETY WARNING**: ALWAYS use safe_install.sh to prevent Claude directory damage!
+
 1. **Clone or copy this hooks directory** to your project
 
-2. **Run the installation script**:
+2. **Run the SAFE installation script**:
 
    ```bash
+   # RECOMMENDED: Full safe installation with backup
+   ./safe_install.sh  # Backs up entire .claude directory first
+
+   # Alternative: Hooks-only installation
    cd hooks
-   ./install-hooks.sh
+   ./install-hooks-python-only.sh  # Updates Python directory only
    ```
+
+   **NEVER use `install-hooks.sh`** - it can destroy your Claude installation
 
 3. **Verify installation**:
 
@@ -486,15 +608,57 @@ pip install requests
 docker restart container
 ```
 
+## Critical Hook Behavior
+
+### Understanding Hook Execution
+
+**IMPORTANT**: Hooks execute within Claude Code's process, not your shell:
+- Hooks receive tool information as JSON via stdin
+- They cannot see your shell environment directly
+- Commands like `git commit --no-verify` are passed as strings to analyze
+- Hooks block based on pattern matching, not actual execution
+
+### Testing Hooks Are Active
+
+**Quick Test**: Try to write to ~/.claude/:
+```bash
+# This SHOULD be blocked if hooks are working:
+echo "test" > ~/.claude/test.txt
+```
+
+If you see "DIRECT HOOK MODIFICATION BLOCKED", hooks are active!
+
+**Debug Mode**: See hook loading:
+```bash
+claude --debug -p "test hooks" 2>&1 | grep -i "hook\|settings"
+# Look for: "Found X hook matchers in settings"
+```
+
 ## Troubleshooting
 
 ### Common Issues
 
 #### Hooks Not Triggering
 
-- Check `~/.claude/settings.json` exists and is valid
+**CRITICAL DISCOVERIES:**
+1. **Hooks ARE Working**: If you can't modify files in ~/.claude/, that's the lint-guard blocking you - hooks are active!
+2. **Settings Format**: Claude Code supports two formats:
+   - Simple: `"PreToolUse": {"Bash": "/path/to/script.sh"}`
+   - Complex: Full matcher/hooks array structure (see configuration section)
+3. **Settings Location**: MUST be in `~/.claude/settings.json` (NOT userSettings.json)
+4. **Invalid Keys**: Remove `_documentation` or other non-standard keys - they cause errors
+5. **Hook Input Format**: Hooks receive JSON with `tool` and `toolInput` fields:
+   ```json
+   {"tool": "Bash", "toolInput": {"command": "git commit --no-verify"}}
+   ```
+
+**Verification Steps:**
+- Quick test: Try `echo "test" > ~/.claude/test.txt` - should be blocked
+- Check `~/.claude/settings.json` exists and is valid JSON
+- Look for "Invalid settings" errors in `claude --debug` output
+- Test with: `git commit --no-verify -m test`
 - Verify scripts are executable: `chmod +x ~/.claude/*.sh`
-- Check Python path in shell scripts
+- Test directly: `echo '{"tool": "Bash", "toolInput": {"command": "git commit --no-verify"}}' | ~/.claude/adaptive-guard.sh`
 
 #### Permission Denied Errors
 

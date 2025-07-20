@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "PreToolUse": {
+      "Bash": "/home/dhalem/.claude/adaptive-guard.sh",
+      "Edit": "/home/dhalem/.claude/lint-guard.sh",
+      "Write": "/home/dhalem/.claude/lint-guard.sh",
+      "MultiEdit": "/home/dhalem/.claude/lint-guard.sh"
+    },
+    "PostToolUse": {
+      "Edit": "/home/dhalem/.claude/lint-guard.sh",
+      "Write": "/home/dhalem/.claude/lint-guard.sh",
+      "MultiEdit": "/home/dhalem/.claude/lint-guard.sh"
+    }
+  }
+}

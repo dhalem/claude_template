@@ -26,6 +26,7 @@ from guards import (  # noqa: E402
     GitHookProtectionGuard,
     GitNoVerifyGuard,
     HookInstallationGuard,
+    InstallScriptPreventionGuard,
     MetaCognitiveGuard,
     MockCodeGuard,
     PipInstallGuard,
@@ -65,6 +66,7 @@ def create_registry() -> GuardRegistry:
     registry.register(MockCodeGuard(), ["Edit", "Write", "MultiEdit"])
     registry.register(PreCommitConfigGuard(), ["Edit", "Write", "MultiEdit"])
     registry.register(HookInstallationGuard(), ["Edit", "Write", "MultiEdit", "Bash"])
+    registry.register(InstallScriptPreventionGuard(), ["Edit", "Write", "MultiEdit"])
     registry.register(ContainerRebuildReminder(), ["Edit", "Write", "MultiEdit"])
     registry.register(DatabaseSchemaReminder(), ["Edit", "Write", "MultiEdit"])
     registry.register(TempFileLocationGuard(), ["Write"])
@@ -89,22 +91,14 @@ def main():
     if len(sys.argv) > 2:
         json_input = " ".join(sys.argv[2:])
     else:
-        json_input = ""
+        json_input = None  # This will make parse_claude_input read from stdin
 
     try:
         # Parse the JSON input
         parsed_input = parse_claude_input(json_input)
 
-        # Create guard context
-        context = GuardContext(
-            tool_name=tool_name,
-            tool_args=parsed_input,
-            command=parsed_input.get("command", ""),
-            file_path=parsed_input.get("file_path", ""),
-            content=parsed_input.get("content", ""),
-            old_string=parsed_input.get("old_string", ""),
-            new_string=parsed_input.get("new_string", "")
-        )
+        # Create guard context from parsed input
+        context = GuardContext.from_claude_input(parsed_input)
 
         # Create registry and check all guards
         registry = create_registry()
@@ -112,9 +106,9 @@ def main():
 
         # Exit with error code if any guard blocks
         if result.should_block:
-            sys.exit(1)
+            sys.exit(2)  # Exit code 2 = block (Claude Code requirement)
         else:
-            sys.exit(0)
+            sys.exit(0)  # Exit code 0 = allow
 
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)

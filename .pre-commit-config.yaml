@@ -199,10 +199,18 @@ repos:
   hooks:
   - id: mandatory-full-test-suite
     name: "\U0001F6A8 MANDATORY FULL TEST SUITE - ALL TESTS MUST PASS \U0001F6A8"
-    entry: bash -c './run_tests.sh'
+    entry: bash -c 'PRECOMMIT_MODE=1 timeout 300 ./run_tests.sh'
     language: system
     types:
     - python
+    pass_filenames: false
+    verbose: true
+- repo: local
+  hooks:
+  - id: check-install-scripts
+    name: Check for unauthorized install scripts
+    entry: .pre-commit-hooks/check-install-scripts.sh
+    language: system
     pass_filenames: false
     verbose: true
 - repo: https://github.com/compilerla/conventional-pre-commit
