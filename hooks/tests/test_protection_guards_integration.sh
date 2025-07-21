@@ -18,18 +18,23 @@ echo ""
 echo "Testing all three guards work together to protect test integrity..."
 echo ""
 
+# Get the directory where this script is located
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+HOOKS_DIR="$(dirname "$SCRIPT_DIR")"
+PROJECT_ROOT="$(dirname "$HOOKS_DIR")"
+
 # Find Python interpreter
 PYTHON_CMD="python3"
-if [ -f "/home/dhalem/github/claude_template/venv/bin/python3" ]; then
-    PYTHON_CMD="/home/dhalem/github/claude_template/venv/bin/python3"
+if [ -f "$PROJECT_ROOT/venv/bin/python3" ]; then
+    PYTHON_CMD="$PROJECT_ROOT/venv/bin/python3"
 elif [ -f "venv/bin/python3" ]; then
     PYTHON_CMD="venv/bin/python3"
 fi
 
 # Guard paths
-TEST_SCRIPT_GUARD="/home/dhalem/github/claude_template/hooks/test-script-integrity-guard.sh"
-PRECOMMIT_GUARD="/home/dhalem/github/claude_template/hooks/precommit-protection-guard.sh"
-ANTIBYPASS_GUARD="/home/dhalem/github/claude_template/hooks/anti-bypass-pattern-guard.py"
+TEST_SCRIPT_GUARD="$HOOKS_DIR/test-script-integrity-guard.sh"
+PRECOMMIT_GUARD="$HOOKS_DIR/precommit-protection-guard.sh"
+ANTIBYPASS_GUARD="$HOOKS_DIR/anti-bypass-pattern-guard.py"
 
 TESTS_PASSED=0
 TESTS_FAILED=0

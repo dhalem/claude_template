@@ -1,7 +1,9 @@
 #!/bin/bash
 # Test override mechanism
 
-GUARD_SCRIPT="/home/dhalem/github/claude_template/hooks/precommit-protection-guard.sh"
+# Get the directory where this script is located
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+GUARD_SCRIPT="$SCRIPT_DIR/precommit-protection-guard.sh"
 TEST_INPUT='{"tool_name": "Bash", "tool_input": {"command": "pre-commit uninstall"}}'
 
 # Test with override

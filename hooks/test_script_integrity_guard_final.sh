@@ -13,7 +13,9 @@
 
 set -euo pipefail
 
-GUARD_SCRIPT="/home/dhalem/github/claude_template/hooks/test-script-integrity-guard.sh"
+# Get the directory where this script is located
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+GUARD_SCRIPT="$SCRIPT_DIR/test-script-integrity-guard.sh"
 
 run_test() {
     local test_name="$1"

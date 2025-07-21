@@ -16,17 +16,28 @@ echo "🧪 Protection Guards Simple Integration Test"
 echo "==========================================="
 echo ""
 
+# Get the directory where this script is located
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+HOOKS_DIR="$(dirname "$SCRIPT_DIR")"
+PROJECT_ROOT="$(dirname "$HOOKS_DIR")"
+
+# Find Python executable
+PYTHON_CMD="python3"
+if [ -f "$PROJECT_ROOT/venv/bin/python3" ]; then
+    PYTHON_CMD="$PROJECT_ROOT/venv/bin/python3"
+fi
+
 # Test each guard individually first
 echo "1️⃣ Testing test-script-integrity-guard.sh..."
-/home/dhalem/github/claude_template/hooks/verify_test_script_integrity_guard.sh
+"$HOOKS_DIR/verify_test_script_integrity_guard.sh"
 echo ""
 
 echo "2️⃣ Testing precommit-protection-guard.sh..."
-/home/dhalem/github/claude_template/hooks/verify_precommit_protection_guard.sh
+"$HOOKS_DIR/verify_precommit_protection_guard.sh"
 echo ""
 
 echo "3️⃣ Testing anti-bypass-pattern-guard.py..."
-/home/dhalem/github/claude_template/venv/bin/python3 /home/dhalem/github/claude_template/hooks/verify_anti_bypass_pattern_guard.py
+"$PYTHON_CMD" "$HOOKS_DIR/verify_anti_bypass_pattern_guard.py"
 echo ""
 
 echo "✅ All protection guards verified individually!"

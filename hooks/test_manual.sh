@@ -6,7 +6,9 @@ set -euo pipefail
 echo "🧪 Manual Test"
 echo "=============="
 
-GUARD_SCRIPT="/home/dhalem/github/claude_template/hooks/test-script-integrity-guard.sh"
+# Get the directory where this script is located
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+GUARD_SCRIPT="$SCRIPT_DIR/test-script-integrity-guard.sh"
 
 if [ -f "$GUARD_SCRIPT" ]; then
     echo "✅ Guard script found: $GUARD_SCRIPT"
