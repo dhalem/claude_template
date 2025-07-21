@@ -1,0 +1,20 @@
+# Include important files in the distribution
+include README.md
+include LICENSE
+include requirements.txt
+include requirements-dev.txt
+include pyproject.toml
+include pytest.ini
+
+# Include all Python source files
+recursive-include guards *.py
+recursive-include utils *.py
+
+# Include test files for development
+recursive-include tests *.py
+
+# Exclude compiled Python files
+global-exclude *.pyc
+global-exclude *.pyo
+global-exclude __pycache__
+global-exclude .pytest_cache

@@ -1,0 +1,8 @@
+# Core dependencies for Claude Template Hooks
+# These are the runtime dependencies needed for the hooks to function
+
+# TOTP-based override system
+pyotp>=2.8.0
+
+# HTTP requests for meta-cognitive guards
+requests>=2.25.0

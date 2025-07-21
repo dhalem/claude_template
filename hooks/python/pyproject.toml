@@ -1,0 +1,78 @@
+[build-system]
+requires = ["setuptools>=45", "wheel", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "claude-template-hooks"
+version = "1.0.0"
+description = "Safety hooks and guards for Claude Template AI assistant"
+readme = "README.md"
+requires-python = ">=3.7"
+dependencies = [
+    "pyotp>=2.8.0",
+    "requests>=2.25.0",
+]
+authors = [
+    {name = "Claude Template Contributors"},
+]
+maintainers = [
+    {name = "Claude Template Maintainers"},
+]
+keywords = ["claude", "ai", "safety", "hooks", "guards", "testing"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Topic :: Software Development :: Quality Assurance",
+    "Topic :: Software Development :: Testing",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+
+[project.urls]
+Homepage = "https://github.com/dhalem/claude_template"
+"Bug Reports" = "https://github.com/dhalem/claude_template/issues"
+Source = "https://github.com/dhalem/claude_template"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "pytest-timeout>=2.0.0",
+    "pytest-mock>=3.0.0",
+    "black>=22.0.0",
+    "flake8>=6.0.0",
+    "mypy>=1.0.0",
+    "bandit>=1.7.0",
+]
+
+[project.scripts]
+claude-guard = "main:main"
+
+[tool.setuptools.packages.find]
+exclude = ["tests", "tests.*"]
+
+[tool.black]
+line-length = 120
+target-version = ['py37', 'py38', 'py39', 'py310', 'py311']
+
+[tool.mypy]
+python_version = "3.7"
+warn_return_any = true
+warn_unused_configs = true
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short"
+
+[tool.bandit]
+exclude_dirs = ["tests", "venv"]
+skips = ["B101", "B601", "B602", "B603", "B604", "B608", "B314", "B324"]

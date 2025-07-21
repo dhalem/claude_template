@@ -164,6 +164,71 @@ git show --name-only HEAD    # Confirm files actually committed
 **Why**: Multiple incidents caused by assuming commits succeeded when they failed.
 **YOU MUST CHECK THAT COMMIT WENT THROUGH BEFORE PROCEEDING!**
 
+### 🚨 MANDATORY COMMIT COMPLETION PROTOCOL
+**ABSOLUTE REQUIREMENT: WAIT FOR COMMITS TO COMPLETE AND READ ALL OUTPUT**
+
+**EVERY COMMIT ATTEMPT REQUIRES:**
+
+1. **WAIT FOR FULL COMPLETION**
+   - ❌ **NEVER** assume commit succeeded if process times out at 2 minutes
+   - ❌ **NEVER** move on to next task while commit is still running
+   - ✅ **ALWAYS** wait for the full commit process to finish (can take 15+ minutes)
+   - ✅ **SET PROPER TIMEOUT**: Use `timeout 900` (15 minutes) for long-running tests
+
+2. **READ EVERY ERROR MESSAGE**
+   - ❌ **NEVER** ignore error messages or assume they're "just warnings"
+   - ❌ **NEVER** assume "timeout" means the commit succeeded
+   - ✅ **READ FULL OUTPUT** from start to finish
+   - ✅ **IDENTIFY SPECIFIC FAILURE POINT**: Which hook? Which test? What error?
+
+3. **VERIFY ACTUAL COMPLETION**
+   ```bash
+   git log --oneline -1        # Check if new commit exists
+   git status                  # Check if files are still staged (= commit failed)
+   ```
+   - If files are still staged, **THE COMMIT FAILED**
+   - If commit hash is unchanged, **THE COMMIT FAILED**
+
+4. **FIX ROOT CAUSES, NOT SYMPTOMS**
+   - ❌ **NEVER** disable pre-commit hooks because "they take too long"
+   - ❌ **NEVER** skip tests because "they're hanging"
+   - ✅ **FIX ENVIRONMENT ISSUES** (missing GEMINI_API_KEY, etc.)
+   - ✅ **INCREASE TIMEOUTS PROPERLY** in `.pre-commit-config.yaml`
+   - ✅ **DEBUG HANGING TESTS** to find root cause
+
+5. **MANDATORY TEST TIMEOUT INVESTIGATION**
+   - When ANY test times out or hangs, **YOU MUST INVESTIGATE IMMEDIATELY**
+   - ❌ **NEVER** assume "it's just a slow test" or "increase timeout and move on"
+   - ✅ **REQUIRED INVESTIGATION STEPS**:
+     ```bash
+     # Find which specific test is hanging
+     timeout 60 ./venv/bin/python -m pytest path/to/test.py::specific_test -xvs
+
+     # Check for common hang causes:
+     ps aux | grep -E "pytest|python|git"  # Look for zombie processes
+
+     # For MCP tests specifically:
+     echo "GOOGLE_API_KEY: ${GOOGLE_API_KEY:+SET}"     # Check API keys
+     echo "GEMINI_API_KEY: ${GEMINI_API_KEY:+SET}"     # Check API keys
+
+     # Run individual test components
+     timeout 30 ./test_mcp_quick.sh                    # Quick MCP check
+     timeout 60 ./venv/bin/python -m pytest indexing/tests/ -v  # Indexing tests
+     ```
+   - ✅ **COMMON ROOT CAUSES TO CHECK**:
+     - Missing environment variables (API keys)
+     - Network calls without timeouts (API requests hanging)
+     - Subprocess deadlocks (PIPE communication issues)
+     - Database locks or missing cleanup
+     - Import errors causing silent failures
+     - DNS lookups on non-existent hosts
+
+**HISTORICAL FAILURES TO NEVER REPEAT:**
+- Assuming commits succeeded when they timed out during test suite
+- Not setting required environment variables (GEMINI_API_KEY) for MCP tests
+- Moving on to next task while commit was still in progress
+- Ignoring specific error messages and focusing only on timeout
+
 ### 🚨 MANDATORY COMMIT MONITORING PROTOCOL
 **CRITICAL: NEVER assume a commit succeeded without verification**
 
