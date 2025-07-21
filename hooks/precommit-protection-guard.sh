@@ -110,70 +110,30 @@ main() {
     local input
     input=$(cat)
 
-    # Find Python interpreter (prefer venv if available)
-    local python_cmd="python3"
-
-    # Try to find project root dynamically
+    # Find JSON parser script location
     local script_dir
     script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-    local project_root=""
+    local parser_script="$script_dir/parse_claude_input.py"
 
-    # Look for project root by finding CLAUDE.md or venv directory
-    local search_dir="$script_dir"
-    for _ in {1..5}; do
-        if [[ -f "$search_dir/CLAUDE.md" ]] || [[ -d "$search_dir/venv" ]]; then
-            project_root="$search_dir"
-            break
-        fi
-        search_dir="$(dirname "$search_dir")"
-        if [[ "$search_dir" == "/" ]]; then
-            break
-        fi
-    done
-
-    # Set Python command with dynamic project root
-    if [[ -n "$project_root" && -f "$project_root/venv/bin/python3" ]]; then
-        python_cmd="$project_root/venv/bin/python3"
-    elif [[ -f "venv/bin/python3" ]]; then
-        python_cmd="venv/bin/python3"
-    fi
-
-    # Handle malformed JSON gracefully
-    if ! echo "$input" | $python_cmd -c "import json, sys; json.loads(sys.stdin.read())" >/dev/null 2>&1; then
+    # Handle malformed JSON gracefully using centralized parser
+    if ! echo "$input" | "$parser_script" --validate-only >/dev/null 2>&1; then
         echo "ERROR: Invalid JSON input" >&2
         exit 1
     fi
 
-    # Extract tool information
+    # Extract tool information using centralized parser
     local tool_name
     local command
 
-    tool_name=$(echo "$input" | $python_cmd -c "
-import json, sys
-input_str = sys.stdin.read()
-try:
-    data = json.loads(input_str)
-    print(data.get('tool_name', ''))
-except:
-    print('')
-")
+    tool_name=$(echo "$input" | "$parser_script" --field tool_name)
 
     # Only check Bash tool calls
     if [[ "$tool_name" != "Bash" ]]; then
         exit 0
     fi
 
-    # Extract command from tool input
-    command=$(echo "$input" | $python_cmd -c "
-import json, sys
-input_str = sys.stdin.read()
-try:
-    data = json.loads(input_str)
-    tool_input = data.get('tool_input', {})
-    print(tool_input.get('command', ''))
-except:
-    print('')
-")
+    # Extract command from tool input using centralized parser
+    command=$(echo "$input" | "$parser_script" --field tool_input.command)
 
     # Skip if no command found
     if [[ -z "$command" ]]; then
