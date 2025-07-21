@@ -16,6 +16,7 @@
 **These postmortems document real failures. READ THEM to avoid repeating these mistakes:**
 - **[MCP Test Failure Postmortem](POSTMORTEM_MCP_TEST_FAILURE_20250119.md)** - Critical lesson: ALWAYS run full test suite (`./run_tests.sh`), not just subset
 - **[Claude Installation Failure Postmortem](POSTMORTEM_CLAUDE_INSTALLATION_FAILURE_20250120.md)** - Critical lesson: NEVER create multiple install scripts, ALWAYS use safe_install.sh
+- **[Fast Mode Violation Postmortem](POSTMORTEM_FAST_MODE_VIOLATION_20250120.md)** - Critical lesson: NEVER implement test shortcuts, fix root cause instead
 
 ## 📝 RULE #0 COMMENT REQUIREMENT
 **EVERY FILE CREATED MUST INCLUDE RULE #0 REMINDER COMMENT**
@@ -197,6 +198,27 @@ git show --name-only HEAD    # Confirm files actually committed
    - Missing dependencies after cleanup
 6. **The hook is your friend** - It caught a real break, be grateful
 
+### 🔧 DEBUGGING HANGING TESTS (SPECIFIC PATTERNS)
+**When tests hang, debug systematically:**
+
+**Subprocess Hanging Checklist:**
+1. **Test command directly**: `command --args` to verify it works
+2. **Test without TTY**: `echo "" | command --args` (simulates pre-commit)
+3. **Check output size**: `command --args 2>&1 | wc -c` (if >64KB, use temp files)
+4. **Environment differences**: Compare `env` between terminal and pre-commit
+5. **Pipe buffer issues**: Look for `subprocess.run(capture_output=True)` with verbose commands
+
+**Network/External Service Hanging:**
+1. **Check service availability**: `curl -I service-url`
+2. **Use short timeouts**: `timeout=30` for external calls
+3. **Mock in tests**: Don't rely on external services in test suite
+4. **Check rate limits**: API services may throttle requests
+
+**Import/Module Hanging:**
+1. **Circular imports**: Check for `import A; import B` where B imports A
+2. **Heavy computations**: Look for expensive operations at module level
+3. **Network calls in imports**: Some modules make network calls when imported
+
 ### 🚨 READ THE ACTUAL ERROR MESSAGES (MANDATORY)
 **THE MOST COMMON MISTAKE: IGNORING ACTUAL ERROR MESSAGES**
 
@@ -210,6 +232,44 @@ git show --name-only HEAD    # Confirm files actually committed
    - Any hook showing `Failed` status
 4. **FIX ALL FAILURES SYSTEMATICALLY** - Don't skip any errors
 5. **NEVER ASSUME SUCCESS** - Verify with git status/log after every commit
+
+### 🚨 SUBPROCESS IN PRE-COMMIT HOOKS (CRITICAL)
+**PRE-COMMIT ENVIRONMENT IS DIFFERENT - ACCOUNT FOR THIS**
+
+**PIPE BUFFER DEADLOCK PREVENTION:**
+```python
+# ❌ WRONG - Can cause deadlock with verbose output
+result = subprocess.run(cmd, capture_output=True, text=True)
+
+# ✅ CORRECT - Use temp files for large output
+with tempfile.NamedTemporaryFile(mode='w+', delete=False) as stdout_file, \
+     tempfile.NamedTemporaryFile(mode='w+', delete=False) as stderr_file:
+
+    result = subprocess.run(cmd, stdout=stdout_file, stderr=stderr_file, text=True)
+    stdout_content = Path(stdout_file.name).read_text()
+    stderr_content = Path(stderr_file.name).read_text()
+```
+
+**ENVIRONMENT-AWARE VERBOSITY:**
+```python
+# Reduce output in pre-commit environment
+cmd_args = ["program", "args"]
+if not os.environ.get('PRE_COMMIT'):
+    cmd_args.insert(1, "--debug")  # Only add verbose flags in terminal
+```
+
+**WHY THIS MATTERS:**
+- Pre-commit runs without TTY, affecting subprocess behavior
+- `capture_output=True` uses PIPE which has limited buffer size
+- Verbose programs (like `claude --debug`) can overflow pipe buffers
+- When buffer fills, subprocess blocks waiting to write, parent blocks waiting to read = DEADLOCK
+- Git hooks have different environment variables and restrictions
+
+**DEBUGGING HANGING SUBPROCESS:**
+1. Test command directly: `command --debug`
+2. Test in non-TTY: `echo "" | command --debug`
+3. Check output size: `command --debug 2>&1 | wc -c`
+4. If output >64KB, use temp files instead of PIPE
 
 ## 📋 Development Workflow
 
@@ -665,8 +725,28 @@ The project includes comprehensive MCP tests:
 - `tests/test_mcp_integration.py` - Pytest integration tests
 
 Tests are automatically run by:
-- `./run_tests.sh` - Includes MCP tests
-- Pre-commit hooks - Runs quick tests only (excludes slow integration tests)
+- `./run_tests.sh` - Includes ALL MCP tests (full integration suite)
+- Pre-commit hooks - Runs FULL test suite (no exclusions, no shortcuts)
+
+#### MCP Tests in Pre-commit Environment
+
+**CRITICAL**: MCP tests run differently in pre-commit hooks due to environment differences:
+
+**Environment Detection**:
+- Tests detect `PRE_COMMIT=1` environment variable
+- In pre-commit: Uses `claude --dangerously-skip-permissions` (no --debug)
+- In terminal: Uses `claude --debug --dangerously-skip-permissions`
+
+**Why This Matters**:
+- `--debug` flag produces excessive output (~10x more verbose)
+- Pre-commit runs without TTY, affecting subprocess behavior
+- Large output can cause subprocess pipe buffer deadlock
+- Solution: Environment-aware verbosity control
+
+**Performance**:
+- Pre-commit MCP tests: ~60-90 seconds (without --debug)
+- Direct execution: ~90-120 seconds (with --debug for debugging)
+- Both run FULL test suite - no shortcuts or exclusions
 
 **Documentation:**
 - `indexing/MCP_SERVER_USAGE.md` - **Complete usage guide and API reference**
