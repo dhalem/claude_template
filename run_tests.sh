@@ -113,12 +113,9 @@ test_mcp_integration() {
     cd "$PROJECT_ROOT"
     source "$VENV_PATH/bin/activate"
 
-    # Check if running in pre-commit mode
-    if [ "${PRECOMMIT_MODE:-0}" = "1" ]; then
-        log_warning "Running in PRE-COMMIT MODE - adding extra debugging and timeouts"
-        export PYTEST_TIMEOUT="120"
-        export SUBPROCESS_DEBUG="1"
-    fi
+    # Set standard timeouts for MCP tests
+    export PYTEST_TIMEOUT="120"
+    export SUBPROCESS_DEBUG="1"
 
     # Ensure GEMINI_API_KEY is available for MCP code-review tests
     if [ -n "${GOOGLE_API_KEY:-}" ] && [ -z "${GEMINI_API_KEY:-}" ]; then
@@ -185,44 +182,26 @@ test_mcp_integration() {
         fi
     fi
 
-    # Run MCP integration tests based on mode
-    if [ "${PRECOMMIT_MODE:-0}" = "1" ]; then
-        log_warning "PRE-COMMIT MODE: Running FAST MCP tests only (protocol validation)"
+    # Run ALL MCP integration tests (NO SHORTCUTS, NO FAST MODE)
+    log_info "Running ALL MCP integration tests (full suite - no skipping)..."
 
-        # In pre-commit mode, run only the fast protocol tests that don't require API calls
-        PYTEST_CMD="timeout 60 $VENV_PATH/bin/python -m pytest tests/test_mcp_integration.py -v --tb=short --capture=no -k 'not (code_review_integration or code_search_integration)'"
-        log_info "Running fast MCP protocol tests: $PYTEST_CMD"
+    # Log environment for debugging
+    log_info "Environment debug:"
+    log_info "GOOGLE_API_KEY: ${GOOGLE_API_KEY:+SET}"
+    log_info "GEMINI_API_KEY: ${GEMINI_API_KEY:+SET}"
 
-        # Log environment for debugging
-        log_info "Environment debug:"
-        log_info "GOOGLE_API_KEY: ${GOOGLE_API_KEY:+SET}"
-        log_info "GEMINI_API_KEY: ${GEMINI_API_KEY:+SET}"
+    # Run all MCP tests - NO EXCLUSIONS
+    PYTEST_CMD="$VENV_PATH/bin/python -m pytest tests/test_mcp_integration.py -v --tb=short"
+    log_info "Running full MCP test suite: $PYTEST_CMD"
 
-        if ! eval "$PYTEST_CMD"; then
-            log_error "MCP protocol tests FAILED - blocking commit"
-            log_error "Basic MCP connectivity and protocol tests must pass"
-            return 1
-        fi
-
-        log_success "Fast MCP protocol tests passed"
-        log_info "NOTE: Full MCP integration tests (including API calls) are run separately"
-        log_info "Run manually: ./venv/bin/python -m pytest tests/test_mcp_integration.py -v"
-
-    else
-        log_info "FULL MODE: Running ALL MCP integration tests (including slow API tests)..."
-
-        # Full mode runs all tests including slow integration tests
-        PYTEST_CMD="$VENV_PATH/bin/python -m pytest tests/test_mcp_integration.py -v"
-
-        if ! eval "$PYTEST_CMD"; then
-            log_error "MCP integration tests FAILED - blocking commit"
-            log_error "All MCP tests must pass - no skipping allowed"
-            log_error "Set GEMINI_API_KEY if needed for API-dependent tests"
-            return 1
-        fi
-
-        log_success "All MCP tests passed"
+    if ! eval "$PYTEST_CMD"; then
+        log_error "MCP integration tests FAILED - blocking commit"
+        log_error "All MCP tests must pass - no skipping allowed"
+        log_error "Set GEMINI_API_KEY if needed for API-dependent tests"
+        return 1
     fi
+
+    log_success "All MCP tests passed"
 
     return 0
 }
