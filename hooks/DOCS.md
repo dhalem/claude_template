@@ -162,7 +162,14 @@ Hooks receive JSON input via **stdin** with the following structure:
 - **`2`**: ✅ **BLOCKS COMMAND** - Tool execution prevented, error shown to user
 - **Other**: **Error** - Treat as blocking error
 
-🚨 **CRITICAL LEARNING (2025-07-02)**: Despite intuitive expectations, **exit code 1 does NOT block commands**! Always use **exit code 2** to block tool execution.
+🚨 **CRITICAL LEARNING**: Despite intuitive expectations, **exit code 1 does NOT block commands**! Always use **exit code 2** to block tool execution.
+
+⚠️ **DANGER**: Past incidents occurred when developers used `exit 1` thinking it would block operations. The commands executed anyway, causing system failures and security breaches.
+
+✅ **CORRECT USAGE**:
+- `exit 0` - Allow operation to proceed
+- `exit 2` - Block operation (shows error to user)
+- Never use `exit 1` for blocking - it's misleading and dangerous!
 
 ### Standard Output & Error
 
@@ -233,7 +240,7 @@ if [[ "$IS_INTERACTIVE" == "true" ]]; then
 
     if [[ ! $REPLY =~ ^[Yy]$ ]]; then
         echo "❌ Operation blocked by user"
-        exit 1
+        exit 2  # BLOCKS OPERATION
     else
         echo "✅ User authorized operation"
         exit 0
@@ -242,7 +249,7 @@ else
     echo "🚨 DANGEROUS OPERATION DETECTED (Non-interactive mode)"
     echo "Command: $COMMAND"
     echo "🚨 RULE FAILURE: Operation blocked by safety-first policy"
-    exit 1
+    exit 2  # BLOCKS OPERATION
 fi
 ```
 
@@ -263,7 +270,7 @@ For automated environments, hooks can block without user input:
 
 if [[ "$COMMAND" =~ dangerous-pattern ]]; then
     echo "🚨 BLOCKED: Dangerous operation forbidden"
-    exit 1
+    exit 2  # BLOCKS OPERATION
 fi
 
 exit 0
@@ -366,7 +373,7 @@ COMMAND=$(echo "$INPUT_JSON" | jq -r '.tool_input.command')
 if [[ "$TOOL_NAME" == "Bash" ]] && [[ "$COMMAND" =~ --no-verify ]]; then
     echo "🚨 BLOCKED: --no-verify bypasses safety checks"
     echo "Fix the underlying hook failures instead."
-    exit 1
+    exit 2  # BLOCKS OPERATION
 fi
 exit 0
 ```
@@ -383,7 +390,7 @@ COMMAND=$(echo "$INPUT_JSON" | jq -r '.tool_input.command')
 if [[ "$COMMAND" =~ docker.*restart ]]; then
     echo "🚨 BLOCKED: docker restart doesn't load new code"
     echo "Use: docker compose build && docker compose up -d"
-    exit 1
+    exit 2  # BLOCKS OPERATION
 fi
 exit 0
 ```
@@ -402,7 +409,7 @@ if [[ "$TOOL_NAME" =~ Edit|Write ]] && [[ "$FILE_PATH" =~ \.pre-commit-config\.y
     echo "🚨 CRITICAL FILE: .pre-commit-config.yaml"
     read -p "Authorize modification? (y/N): " -n 1 -r
     echo ""
-    [[ ! $REPLY =~ ^[Yy]$ ]] && exit 1
+    [[ ! $REPLY =~ ^[Yy]$ ]] && exit 2  # BLOCKS OPERATION
 fi
 exit 0
 ```

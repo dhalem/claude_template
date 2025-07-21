@@ -123,9 +123,29 @@ main() {
 
     # Find Python interpreter (prefer venv if available)
     local python_cmd="python3"
-    if [ -f "/home/dhalem/github/claude_template/venv/bin/python3" ]; then
-        python_cmd="/home/dhalem/github/claude_template/venv/bin/python3"
-    elif [ -f "venv/bin/python3" ]; then
+
+    # Try to find project root dynamically
+    local script_dir
+    script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    local project_root=""
+
+    # Look for project root by finding CLAUDE.md or venv directory
+    local search_dir="$script_dir"
+    for _ in {1..5}; do
+        if [[ -f "$search_dir/CLAUDE.md" ]] || [[ -d "$search_dir/venv" ]]; then
+            project_root="$search_dir"
+            break
+        fi
+        search_dir="$(dirname "$search_dir")"
+        if [[ "$search_dir" == "/" ]]; then
+            break
+        fi
+    done
+
+    # Set Python command with dynamic project root
+    if [[ -n "$project_root" && -f "$project_root/venv/bin/python3" ]]; then
+        python_cmd="$project_root/venv/bin/python3"
+    elif [[ -f "venv/bin/python3" ]]; then
         python_cmd="venv/bin/python3"
     fi
 

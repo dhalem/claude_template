@@ -164,6 +164,41 @@ git show --name-only HEAD    # Confirm files actually committed
 **Why**: Multiple incidents caused by assuming commits succeeded when they failed.
 **YOU MUST CHECK THAT COMMIT WENT THROUGH BEFORE PROCEEDING!**
 
+### 🚨 MANDATORY COMMIT MONITORING PROTOCOL
+**CRITICAL: NEVER assume a commit succeeded without verification**
+
+**REQUIRED ACTIONS for EVERY commit attempt:**
+
+1. **WATCH THE ENTIRE COMMIT PROCESS** - Do not move on until complete
+2. **READ ALL OUTPUT** - Understand what's happening, where it fails
+3. **IDENTIFY SPECIFIC FAILURE POINT** - Pre-commit hook? Which test? Why?
+4. **VERIFY COMPLETION** with `git log --oneline -1`
+5. **IF TIMEOUT/HANG**: Investigate the specific hanging component
+
+**COMMON HANGING POINTS:**
+- Full test suite in pre-commit (`./run_tests.sh`)
+- MCP integration tests (subprocess pipe deadlock)
+- Long-running tests without proper timeout handling
+- Environment differences between manual and pre-commit execution
+
+**DEBUGGING HANGING COMMITS:**
+```bash
+# Test the exact pre-commit command manually:
+PRE_COMMIT=1 timeout 600 ./run_tests.sh
+
+# If that hangs, isolate the hanging test:
+PRE_COMMIT=1 ./run_tests.sh 2>&1 | tee commit_debug.log
+
+# Check what the pre-commit hook is actually running:
+cat .pre-commit-config.yaml | grep -A5 "MANDATORY FULL TEST"
+
+# Debug specific test components:
+./run_tests.sh  # Run manually first
+pytest tests/test_mcp_integration.py -v  # Check MCP tests specifically
+```
+
+**NEVER proceed with additional changes until you understand why a commit failed or hung.**
+
 ### 🚨 MANDATORY FULL TEST SUITE RULE (ZERO EXCEPTIONS)
 **ABSOLUTE REQUIREMENT - NO NEGOTIATIONS, NO SHORTCUTS:**
 

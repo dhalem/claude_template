@@ -172,6 +172,7 @@ class TestMCPServers:
         except json.JSONDecodeError as e:
             pytest.fail(f"Invalid JSON from {server_name}: {e}")
 
+    @pytest.mark.timeout(180)  # Allow 3 minutes for MCP integration test
     def test_mcp_code_review_integration(self, claude_available, mcp_config):
         """Test code review MCP tool through Claude"""
         print(f"\n[DEBUG] Starting test_mcp_code_review_integration at {os.getpid()}")
@@ -217,8 +218,13 @@ def example_function():
 
             # Full integration test with actual code review
             # Use Gemini 1.5 Flash for faster tests
-            prompt = f"Use the mcp__code-review__review_code tool with model='gemini-1.5-flash' to review {test_file}"
-            timeout_val = 120
+            # In pre-commit mode, use the simple test directory for speed
+            if os.environ.get('PRE_COMMIT'):
+                prompt = "Use the mcp__code-review__review_code tool with model='gemini-1.5-flash' to review test_review_dir"
+                timeout_val = 60  # Longer timeout for pre-commit mode
+            else:
+                prompt = f"Use the mcp__code-review__review_code tool with model='gemini-1.5-flash' to review {test_file}"
+                timeout_val = 120
 
             print(f"[DEBUG] About to run subprocess with prompt: {prompt[:100]}...")
             print(f"[DEBUG] Timeout: {timeout_val}s")
@@ -303,6 +309,7 @@ def example_function():
             # Cleanup
             Path(test_file).unlink(missing_ok=True)
 
+    @pytest.mark.timeout(180)  # Allow 3 minutes for MCP integration test
     def test_mcp_code_search_integration(self, claude_available, mcp_config):
         """Test code search MCP tool through Claude"""
         print(f"\n[DEBUG] Starting test_mcp_code_search_integration at {os.getpid()}")

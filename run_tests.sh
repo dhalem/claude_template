@@ -191,8 +191,14 @@ test_mcp_integration() {
     log_info "GEMINI_API_KEY: ${GEMINI_API_KEY:+SET}"
 
     # Run all MCP tests - NO EXCLUSIONS
-    PYTEST_CMD="$VENV_PATH/bin/python -m pytest tests/test_mcp_integration.py -v --tb=short"
-    log_info "Running full MCP test suite: $PYTEST_CMD"
+    # In pre-commit mode, add timeout to prevent hanging on specific tests
+    if [[ "${PRE_COMMIT:-}" == "1" ]]; then
+        PYTEST_CMD="timeout 200 $VENV_PATH/bin/python -m pytest tests/test_mcp_integration.py -v --tb=short"
+        log_info "Running MCP test suite with timeout (pre-commit mode): $PYTEST_CMD"
+    else
+        PYTEST_CMD="$VENV_PATH/bin/python -m pytest tests/test_mcp_integration.py -v --tb=short"
+        log_info "Running full MCP test suite: $PYTEST_CMD"
+    fi
 
     if ! eval "$PYTEST_CMD"; then
         log_error "MCP integration tests FAILED - blocking commit"

@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/home/dhalem/.claude/adaptive-guard.sh"
+            "command": "~/.claude/adaptive-guard.sh"
           }
         ]
       },
@@ -15,7 +15,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/home/dhalem/.claude/lint-guard.sh"
+            "command": "~/.claude/lint-guard.sh"
           }
         ]
       },
@@ -24,7 +24,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/home/dhalem/.claude/lint-guard.sh"
+            "command": "~/.claude/lint-guard.sh"
           }
         ]
       },
@@ -33,7 +33,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/home/dhalem/.claude/lint-guard.sh"
+            "command": "~/.claude/lint-guard.sh"
           }
         ]
       }
@@ -44,7 +44,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/home/dhalem/.claude/lint-guard.sh"
+            "command": "~/.claude/lint-guard.sh"
           }
         ]
       },
@@ -53,7 +53,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/home/dhalem/.claude/lint-guard.sh"
+            "command": "~/.claude/lint-guard.sh"
           }
         ]
       },
@@ -62,7 +62,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/home/dhalem/.claude/lint-guard.sh"
+            "command": "~/.claude/lint-guard.sh"
           }
         ]
       }
@@ -86,21 +86,24 @@
       "rule_failure_messages": "Clear 'RULE FAILURE' indicators for blocked operations"
     },
     "adding_new_guards": {
-      "step_1": "Edit /home/dhalem/.claude/adaptive-guard.sh",
+      "step_1": "Edit ~/.claude/adaptive-guard.sh",
       "step_2": "Add new guard section with clear header comments",
       "step_3": "Follow pattern: detect -> message -> get_user_permission -> exit",
       "step_4": "Test both interactive and non-interactive modes",
       "step_5": "Update documentation in script header and this JSON file"
     },
     "maintenance": {
-      "script_location": "/home/dhalem/.claude/adaptive-guard.sh",
-      "config_location": "/home/dhalem/.claude/settings.json",
+      "script_location": "~/.claude/adaptive-guard.sh",
+      "config_location": "~/.claude/settings.json",
       "test_command": "Test hooks by attempting actions they should block",
       "synchronization": "Always update both repository and installation files together"
     },
     "version_requirements": {
       "claude_code": "v1.0.40 or higher (hooks not available in v1.0.24)",
-      "dependencies": ["bash", "jq"],
+      "dependencies": [
+        "bash",
+        "jq"
+      ],
       "restart_required": "Restart Claude Code after hook installation/updates"
     }
   }

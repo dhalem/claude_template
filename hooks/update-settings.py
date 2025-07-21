@@ -30,7 +30,7 @@ def update_settings():
     # Add lint guard for file operations
     lint_hook_config = {
         "matcher": "Edit",
-        "hooks": [{"type": "command", "command": "/home/dhalem/.claude/lint-guard.sh"}],
+        "hooks": [{"type": "command", "command": "~/.claude/lint-guard.sh"}],
     }
 
     # Check if already exists (avoid duplicates)

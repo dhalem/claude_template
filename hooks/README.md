@@ -21,12 +21,11 @@ cd ..  # Go to project root
 ## Quick Start
 
 ```bash
-# Install the hooks
-cd hooks
-./install-hooks.sh
+# Install the entire system safely (from project root)
+./safe_install.sh
 
 # Test the installation
-./test-hooks.sh
+./run_tests.sh
 ```
 
 ## What This Protects Against
