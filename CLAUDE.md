@@ -408,6 +408,30 @@ if not os.environ.get('PRE_COMMIT'):
 
 **INSTALLATION MUST FAIL FAST on any error**
 
+## 📋 DESIGN AND PLANNING DOCUMENTATION STANDARDS
+
+**CRITICAL: NO CODE IN DESIGN DOCUMENTS**
+
+**Planning and design documents must focus on WHAT and WHY, not HOW:**
+- ✅ **Use conceptual explanations**: "Build a smart system that recognizes when you're about to create something similar"
+- ✅ **Use simple analogies**: "Think of it like a smart librarian who knows all your books"
+- ✅ **Use step-by-step workflows**: "Week 1: Build the brain, Week 2: Teach it your codebase"
+- ✅ **Use user experience descriptions**: "System shows: 'Found 89% similar file - edit existing instead?'"
+- ❌ **NO code examples**: No Python, bash, JSON, or any programming language syntax
+- ❌ **NO implementation details**: No class names, function signatures, API calls
+- ❌ **NO technical specifications**: No database schemas, configuration files
+
+**WHY THIS RULE EXISTS:**
+- Code in planning docs creates premature implementation decisions
+- Users want to understand the PLAN, not see walls of code
+- Design docs should be readable by non-technical stakeholders
+- Implementation details belong in separate technical documentation
+
+**ENFORCEMENT:**
+- Any design/planning document containing code blocks will be rejected
+- Use separate implementation docs for technical details
+- Keep design docs focused on user experience and high-level architecture
+
 ## Project-Specific Rules
 
 See `CLAUDE.local.md` for project-specific guidelines.
