@@ -15,7 +15,9 @@
 # THIS SCRIPT RUNS ALL TESTS EVERY TIME - NO EXCEPTIONS, NO SHORTCUTS, NO FAST MODE
 #
 # CRITICAL RULE: This script MUST run every test in the project:
+# - Hook system tests
 # - Indexing tests (58 tests)
+# - Duplicate prevention tests (25 tests)
 # - Main project tests
 # - MCP integration tests
 # - ALL other test suites
@@ -82,6 +84,23 @@ test_indexing() {
         return 0
     else
         log_error "Indexing tests failed"
+        return 1
+    fi
+}
+
+# Run duplicate prevention tests
+test_duplicate_prevention() {
+    log_info "Running duplicate prevention system tests..."
+
+    cd "$PROJECT_ROOT"
+    source "$VENV_PATH/bin/activate"
+
+    # Run all duplicate prevention tests
+    if "$VENV_PATH/bin/python" -m pytest duplicate_prevention/tests/ -v; then
+        log_success "Duplicate prevention tests passed"
+        return 0
+    else
+        log_error "Duplicate prevention tests failed"
         return 1
     fi
 }
@@ -407,6 +426,12 @@ main() {
         exit 1
     fi
 
+    # Run duplicate prevention tests - MUST PASS
+    if ! test_duplicate_prevention; then
+        log_error "Duplicate prevention tests FAILED - blocking commit"
+        exit 1
+    fi
+
     # Run main project tests - MUST PASS
     if ! test_main_project; then
         log_error "Main project tests FAILED - blocking commit"
@@ -422,6 +447,7 @@ main() {
     log_success "🎉 ALL TESTS PASSED - COMMIT ALLOWED 🎉"
     log_info "✅ Hook system tests verified working"
     log_info "✅ Indexing system (58 tests) verified working"
+    log_info "✅ Duplicate prevention system (25 tests) verified working"
     log_info "✅ Main project tests verified working"
     log_info "✅ MCP integration tests verified working"
 }
