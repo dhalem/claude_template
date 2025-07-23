@@ -1,7 +1,8 @@
 # Duplicate Prevention System Dependencies
 
 # Vector Database
-qdrant-client>=1.8.0,<2.0.0
+# Note: Currently using requests for direct REST API calls
+# TODO: Consider migrating to official qdrant-client SDK for better maintainability
 requests>=2.25.0,<3.0.0
 
 # Testing Dependencies

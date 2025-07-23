@@ -221,7 +221,7 @@ def example_function():
             # In pre-commit mode, use the simple test directory for speed
             if os.environ.get('PRE_COMMIT'):
                 prompt = "Use the mcp__code-review__review_code tool with model='gemini-1.5-flash' to review test_review_dir"
-                timeout_val = 60  # Longer timeout for pre-commit mode
+                timeout_val = 180  # Extended timeout for external API calls in pre-commit mode
             else:
                 prompt = f"Use the mcp__code-review__review_code tool with model='gemini-1.5-flash' to review {test_file}"
                 timeout_val = 120
