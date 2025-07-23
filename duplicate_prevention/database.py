@@ -21,7 +21,7 @@ Functions:
     get_health_status: Check database health and connectivity
 """
 
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 import requests
 
@@ -136,7 +136,7 @@ class DatabaseConnector:
             total=self.max_retries,
             backoff_factor=0.1,  # 0.1s, 0.2s, 0.4s delays
             status_forcelist=[500, 502, 503, 504],  # Retry on server errors
-            allowed_methods=["GET"],  # Only retry GET requests
+            allowed_methods=["GET", "PUT", "DELETE"],  # Retry idempotent operations
             # Don't retry on connection errors (includes timeouts) to maintain predictable timeout behavior
             raise_on_status=False,
             connect=0,  # Don't retry connection errors
@@ -283,6 +283,754 @@ class DatabaseConnector:
 
     # Removed stateful error tracking methods for thread safety
     # Errors are now logged and included in return values instead of stored state
+
+    def create_collection(self, collection_name: str, vector_size: int, distance: str = "cosine") -> bool:
+        """Create a new collection in Qdrant
+
+        Args:
+            collection_name: Name of the collection to create
+            vector_size: Dimension of vectors to store
+            distance: Distance metric ("cosine", "dot", "euclid")
+
+        Returns:
+            True if collection created successfully, False otherwise
+        """
+        # Validate parameters
+        if not collection_name or collection_name.strip() == "":
+            self.logger.error("Cannot create collection with empty name")
+            return False
+
+        if vector_size <= 0:
+            self.logger.error(f"Invalid vector size: {vector_size}. Must be positive integer")
+            return False
+
+        if distance not in ["cosine", "dot", "euclid"]:
+            self.logger.error(f"Invalid distance metric: {distance}. Must be 'cosine', 'dot', or 'euclid'")
+            return False
+
+        self.logger.debug(
+            "Creating collection",
+            extra={
+                "collection_name": collection_name,
+                "vector_size": vector_size,
+                "distance": distance,
+                "base_url": self.base_url
+            }
+        )
+
+        # Prepare collection configuration
+        collection_config = {
+            "vectors": {
+                "size": vector_size,
+                "distance": distance.capitalize()  # Qdrant expects "Cosine", "Dot", "Euclid"
+            }
+        }
+
+        try:
+            # Create collection via Qdrant REST API
+            response = self.session.put(
+                f"{self.base_url}/collections/{collection_name}",
+                json=collection_config,
+                timeout=self.timeout_tuple
+            )
+
+            success = response.status_code in [200, 201]
+
+            if success:
+                self.logger.info(
+                    "Collection created successfully",
+                    extra={
+                        "collection_name": collection_name,
+                        "vector_size": vector_size,
+                        "distance": distance,
+                        "status_code": response.status_code
+                    }
+                )
+            else:
+                # Check if collection already exists (409 Conflict)
+                if response.status_code == 409:
+                    self.logger.warning(
+                        "Collection already exists",
+                        extra={
+                            "collection_name": collection_name,
+                            "status_code": response.status_code
+                        }
+                    )
+                    return False
+                else:
+                    self.logger.error(
+                        "Failed to create collection",
+                        extra={
+                            "collection_name": collection_name,
+                            "status_code": response.status_code,
+                            "response_text": response.text[:200]  # Truncate long responses
+                        }
+                    )
+
+            return success
+
+        except requests.exceptions.Timeout:
+            self.logger.error(
+                "Timeout creating collection",
+                extra={
+                    "collection_name": collection_name,
+                    "connect_timeout": self.connect_timeout,
+                    "read_timeout": self.read_timeout
+                }
+            )
+            return False
+        except requests.exceptions.ConnectionError:
+            self.logger.error(
+                "Connection error creating collection",
+                extra={
+                    "collection_name": collection_name,
+                    "base_url": self.base_url
+                }
+            )
+            return False
+        except requests.exceptions.RequestException as e:
+            self.logger.error(
+                "Request error creating collection",
+                extra={
+                    "collection_name": collection_name,
+                    "error": str(e)
+                }
+            )
+            return False
+
+    def collection_exists(self, collection_name: str) -> bool:
+        """Check if a collection exists
+
+        Args:
+            collection_name: Name of the collection to check
+
+        Returns:
+            True if collection exists, False otherwise
+        """
+        self.logger.debug(
+            "Checking if collection exists",
+            extra={
+                "collection_name": collection_name,
+                "base_url": self.base_url
+            }
+        )
+
+        try:
+            # Get collection info via Qdrant REST API
+            response = self.session.get(
+                f"{self.base_url}/collections/{collection_name}",
+                timeout=self.timeout_tuple
+            )
+
+            exists = response.status_code == 200
+
+            if exists:
+                self.logger.debug(
+                    "Collection exists",
+                    extra={
+                        "collection_name": collection_name,
+                        "status_code": response.status_code
+                    }
+                )
+            else:
+                if response.status_code == 404:
+                    self.logger.debug(
+                        "Collection does not exist",
+                        extra={
+                            "collection_name": collection_name,
+                            "status_code": response.status_code
+                        }
+                    )
+                else:
+                    self.logger.warning(
+                        "Unexpected status checking collection existence",
+                        extra={
+                            "collection_name": collection_name,
+                            "status_code": response.status_code
+                        }
+                    )
+
+            return exists
+
+        except requests.exceptions.Timeout:
+            self.logger.error(
+                "Timeout checking collection existence",
+                extra={
+                    "collection_name": collection_name,
+                    "connect_timeout": self.connect_timeout,
+                    "read_timeout": self.read_timeout
+                }
+            )
+            return False
+        except requests.exceptions.ConnectionError:
+            self.logger.error(
+                "Connection error checking collection existence",
+                extra={
+                    "collection_name": collection_name,
+                    "base_url": self.base_url
+                }
+            )
+            return False
+        except requests.exceptions.RequestException as e:
+            self.logger.error(
+                "Request error checking collection existence",
+                extra={
+                    "collection_name": collection_name,
+                    "error": str(e)
+                }
+            )
+            return False
+
+    def delete_collection(self, collection_name: str) -> bool:
+        """Delete a collection from Qdrant
+
+        Args:
+            collection_name: Name of the collection to delete
+
+        Returns:
+            True if collection deleted successfully, False otherwise
+        """
+        self.logger.debug(
+            "Deleting collection",
+            extra={
+                "collection_name": collection_name,
+                "base_url": self.base_url
+            }
+        )
+
+        try:
+            # Delete collection via Qdrant REST API
+            response = self.session.delete(
+                f"{self.base_url}/collections/{collection_name}",
+                timeout=self.timeout_tuple
+            )
+
+            if response.status_code == 200:
+                try:
+                    data = response.json()
+                    # Qdrant returns {"result": true} if collection existed and was deleted
+                    # {"result": false} if collection didn't exist
+                    success = data.get("result", False)
+
+                    if success:
+                        self.logger.info(
+                            "Collection deleted successfully",
+                            extra={
+                                "collection_name": collection_name,
+                                "status_code": response.status_code
+                            }
+                        )
+                    else:
+                        self.logger.warning(
+                            "Collection does not exist, cannot delete",
+                            extra={
+                                "collection_name": collection_name,
+                                "status_code": response.status_code
+                            }
+                        )
+
+                    return success
+
+                except (ValueError, KeyError) as e:
+                    self.logger.error(
+                        "Error parsing delete response",
+                        extra={
+                            "collection_name": collection_name,
+                            "response_text": response.text[:200],
+                            "error": str(e)
+                        }
+                    )
+                    return False
+            else:
+                self.logger.error(
+                    "Failed to delete collection",
+                    extra={
+                        "collection_name": collection_name,
+                        "status_code": response.status_code,
+                        "response_text": response.text[:200]  # Truncate long responses
+                    }
+                )
+                return False
+
+        except requests.exceptions.Timeout:
+            self.logger.error(
+                "Timeout deleting collection",
+                extra={
+                    "collection_name": collection_name,
+                    "connect_timeout": self.connect_timeout,
+                    "read_timeout": self.read_timeout
+                }
+            )
+            return False
+        except requests.exceptions.ConnectionError:
+            self.logger.error(
+                "Connection error deleting collection",
+                extra={
+                    "collection_name": collection_name,
+                    "base_url": self.base_url
+                }
+            )
+            return False
+        except requests.exceptions.RequestException as e:
+            self.logger.error(
+                "Request error deleting collection",
+                extra={
+                    "collection_name": collection_name,
+                    "error": str(e)
+                }
+            )
+            return False
+
+    def list_collections(self) -> List[str]:
+        """List all collections in Qdrant
+
+        Returns:
+            List of collection names
+        """
+        self.logger.debug(
+            "Listing all collections",
+            extra={"base_url": self.base_url}
+        )
+
+        try:
+            # Get collections list via Qdrant REST API
+            response = self.session.get(
+                f"{self.base_url}/collections",
+                timeout=self.timeout_tuple
+            )
+
+            if response.status_code == 200:
+                data = response.json()
+
+                # Extract collection names from response
+                # Qdrant API returns: {"result": {"collections": [{"name": "collection1"}, ...]}}
+                collections = []
+                if isinstance(data, dict) and "result" in data:
+                    result = data["result"]
+                    if isinstance(result, dict) and "collections" in result:
+                        for collection_info in result["collections"]:
+                            if isinstance(collection_info, dict) and "name" in collection_info:
+                                collections.append(collection_info["name"])
+
+                self.logger.info(
+                    "Successfully listed collections",
+                    extra={
+                        "collection_count": len(collections),
+                        "collections": collections[:10]  # Only log first 10 for brevity
+                    }
+                )
+
+                return collections
+            else:
+                self.logger.error(
+                    "Failed to list collections",
+                    extra={
+                        "status_code": response.status_code,
+                        "response_text": response.text[:200]  # Truncate long responses
+                    }
+                )
+                return []
+
+        except requests.exceptions.Timeout:
+            self.logger.error(
+                "Timeout listing collections",
+                extra={
+                    "connect_timeout": self.connect_timeout,
+                    "read_timeout": self.read_timeout
+                }
+            )
+            return []
+        except requests.exceptions.ConnectionError:
+            self.logger.error(
+                "Connection error listing collections",
+                extra={"base_url": self.base_url}
+            )
+            return []
+        except requests.exceptions.RequestException as e:
+            self.logger.error(
+                "Request error listing collections",
+                extra={"error": str(e)}
+            )
+            return []
+        except (ValueError, KeyError) as e:
+            self.logger.error(
+                "Error parsing collections response",
+                extra={"error": str(e)}
+            )
+            return []
+
+    def create_collection_strict(self, collection_name: str, vector_size: int, distance: str = "cosine") -> None:
+        """Create a new collection in Qdrant with strict error handling
+
+        Args:
+            collection_name: Name of the collection to create
+            vector_size: Dimension of vectors to store
+            distance: Distance metric ("cosine", "dot", "euclid")
+
+        Raises:
+            ValueError: If parameters are invalid
+            DatabaseTimeoutError: If operation times out
+            DatabaseConnectionError: If connection fails
+            DatabaseError: For other database-related errors
+        """
+        # Validate parameters
+        if not collection_name or collection_name.strip() == "":
+            raise ValueError("Cannot create collection with empty name")
+
+        if vector_size <= 0:
+            raise ValueError(f"Invalid vector size: {vector_size}. Must be positive integer")
+
+        if distance not in ["cosine", "dot", "euclid"]:
+            raise ValueError(f"Invalid distance metric: {distance}. Must be 'cosine', 'dot', or 'euclid'")
+
+        self.logger.debug(
+            "Creating collection (strict mode)",
+            extra={
+                "collection_name": collection_name,
+                "vector_size": vector_size,
+                "distance": distance,
+                "base_url": self.base_url
+            }
+        )
+
+        # Prepare collection configuration
+        collection_config = {
+            "vectors": {
+                "size": vector_size,
+                "distance": distance.capitalize()  # Qdrant expects "Cosine", "Dot", "Euclid"
+            }
+        }
+
+        try:
+            # Create collection via Qdrant REST API
+            response = self.session.put(
+                f"{self.base_url}/collections/{collection_name}",
+                json=collection_config,
+                timeout=self.timeout_tuple
+            )
+
+            if response.status_code in [200, 201]:
+                self.logger.info(
+                    "Collection created successfully (strict mode)",
+                    extra={
+                        "collection_name": collection_name,
+                        "vector_size": vector_size,
+                        "distance": distance,
+                        "status_code": response.status_code
+                    }
+                )
+            elif response.status_code == 409:
+                # Collection already exists - this is a specific application error
+                error_msg = f"Collection '{collection_name}' already exists"
+                self.logger.error(error_msg)
+                raise DatabaseError(error_msg)
+            else:
+                error_msg = f"Failed to create collection '{collection_name}': HTTP {response.status_code}"
+                self.logger.error(
+                    "Failed to create collection (strict mode)",
+                    extra={
+                        "collection_name": collection_name,
+                        "status_code": response.status_code,
+                        "response_text": response.text[:200]
+                    }
+                )
+                raise DatabaseError(error_msg)
+
+        except requests.exceptions.Timeout as e:
+            error_msg = f"Timeout creating collection '{collection_name}' (connect: {self.connect_timeout}s, read: {self.read_timeout}s)"
+            self.logger.error(
+                "Timeout creating collection (strict mode)",
+                extra={
+                    "collection_name": collection_name,
+                    "connect_timeout": self.connect_timeout,
+                    "read_timeout": self.read_timeout
+                }
+            )
+            raise DatabaseTimeoutError(error_msg) from e
+        except requests.exceptions.ConnectionError as e:
+            error_msg = f"Connection error creating collection '{collection_name}'"
+            self.logger.error(
+                "Connection error creating collection (strict mode)",
+                extra={
+                    "collection_name": collection_name,
+                    "base_url": self.base_url
+                }
+            )
+            raise DatabaseConnectionError(error_msg) from e
+        except requests.exceptions.RequestException as e:
+            error_msg = f"Request error creating collection '{collection_name}'"
+            self.logger.error(
+                "Request error creating collection (strict mode)",
+                extra={
+                    "collection_name": collection_name,
+                    "error": str(e)
+                }
+            )
+            raise DatabaseError(error_msg) from e
+
+    def collection_exists_strict(self, collection_name: str) -> bool:
+        """Check if a collection exists with strict error handling
+
+        Args:
+            collection_name: Name of the collection to check
+
+        Returns:
+            True if collection exists, False if it doesn't exist
+
+        Raises:
+            DatabaseTimeoutError: If operation times out
+            DatabaseConnectionError: If connection fails
+            DatabaseError: For other database-related errors
+        """
+        self.logger.debug(
+            "Checking if collection exists (strict mode)",
+            extra={
+                "collection_name": collection_name,
+                "base_url": self.base_url
+            }
+        )
+
+        try:
+            # Get collection info via Qdrant REST API
+            response = self.session.get(
+                f"{self.base_url}/collections/{collection_name}",
+                timeout=self.timeout_tuple
+            )
+
+            if response.status_code == 200:
+                self.logger.debug(
+                    "Collection exists (strict mode)",
+                    extra={
+                        "collection_name": collection_name,
+                        "status_code": response.status_code
+                    }
+                )
+                return True
+            elif response.status_code == 404:
+                self.logger.debug(
+                    "Collection does not exist (strict mode)",
+                    extra={
+                        "collection_name": collection_name,
+                        "status_code": response.status_code
+                    }
+                )
+                return False
+            else:
+                error_msg = f"Unexpected status checking collection existence: HTTP {response.status_code}"
+                self.logger.error(
+                    "Unexpected status checking collection existence (strict mode)",
+                    extra={
+                        "collection_name": collection_name,
+                        "status_code": response.status_code
+                    }
+                )
+                raise DatabaseError(error_msg)
+
+        except requests.exceptions.Timeout as e:
+            error_msg = f"Timeout checking collection existence for '{collection_name}' (connect: {self.connect_timeout}s, read: {self.read_timeout}s)"
+            self.logger.error(
+                "Timeout checking collection existence (strict mode)",
+                extra={
+                    "collection_name": collection_name,
+                    "connect_timeout": self.connect_timeout,
+                    "read_timeout": self.read_timeout
+                }
+            )
+            raise DatabaseTimeoutError(error_msg) from e
+        except requests.exceptions.ConnectionError as e:
+            error_msg = f"Connection error checking collection existence for '{collection_name}'"
+            self.logger.error(
+                "Connection error checking collection existence (strict mode)",
+                extra={
+                    "collection_name": collection_name,
+                    "base_url": self.base_url
+                }
+            )
+            raise DatabaseConnectionError(error_msg) from e
+        except requests.exceptions.RequestException as e:
+            error_msg = f"Request error checking collection existence for '{collection_name}'"
+            self.logger.error(
+                "Request error checking collection existence (strict mode)",
+                extra={
+                    "collection_name": collection_name,
+                    "error": str(e)
+                }
+            )
+            raise DatabaseError(error_msg) from e
+
+    def delete_collection_strict(self, collection_name: str) -> None:
+        """Delete a collection from Qdrant with strict error handling
+
+        Args:
+            collection_name: Name of the collection to delete
+
+        Raises:
+            DatabaseError: If collection doesn't exist or deletion fails
+            DatabaseTimeoutError: If operation times out
+            DatabaseConnectionError: If connection fails
+        """
+        self.logger.debug(
+            "Deleting collection (strict mode)",
+            extra={
+                "collection_name": collection_name,
+                "base_url": self.base_url
+            }
+        )
+
+        # First check if collection exists for better error messages
+        if not self.collection_exists_strict(collection_name):
+            error_msg = f"Collection '{collection_name}' does not exist, cannot delete"
+            self.logger.error(error_msg)
+            raise DatabaseError(error_msg)
+
+        try:
+            # Delete collection via Qdrant REST API
+            response = self.session.delete(
+                f"{self.base_url}/collections/{collection_name}",
+                timeout=self.timeout_tuple
+            )
+
+            if response.status_code == 200:
+                self.logger.info(
+                    "Collection deleted successfully (strict mode)",
+                    extra={
+                        "collection_name": collection_name,
+                        "status_code": response.status_code
+                    }
+                )
+            else:
+                error_msg = f"Failed to delete collection '{collection_name}': HTTP {response.status_code}"
+                self.logger.error(
+                    "Failed to delete collection (strict mode)",
+                    extra={
+                        "collection_name": collection_name,
+                        "status_code": response.status_code,
+                        "response_text": response.text[:200]
+                    }
+                )
+                raise DatabaseError(error_msg)
+
+        except requests.exceptions.Timeout as e:
+            error_msg = f"Timeout deleting collection '{collection_name}' (connect: {self.connect_timeout}s, read: {self.read_timeout}s)"
+            self.logger.error(
+                "Timeout deleting collection (strict mode)",
+                extra={
+                    "collection_name": collection_name,
+                    "connect_timeout": self.connect_timeout,
+                    "read_timeout": self.read_timeout
+                }
+            )
+            raise DatabaseTimeoutError(error_msg) from e
+        except requests.exceptions.ConnectionError as e:
+            error_msg = f"Connection error deleting collection '{collection_name}'"
+            self.logger.error(
+                "Connection error deleting collection (strict mode)",
+                extra={
+                    "collection_name": collection_name,
+                    "base_url": self.base_url
+                }
+            )
+            raise DatabaseConnectionError(error_msg) from e
+        except requests.exceptions.RequestException as e:
+            error_msg = f"Request error deleting collection '{collection_name}'"
+            self.logger.error(
+                "Request error deleting collection (strict mode)",
+                extra={
+                    "collection_name": collection_name,
+                    "error": str(e)
+                }
+            )
+            raise DatabaseError(error_msg) from e
+
+    def list_collections_strict(self) -> List[str]:
+        """List all collections in Qdrant with strict error handling
+
+        Returns:
+            List of collection names
+
+        Raises:
+            DatabaseTimeoutError: If operation times out
+            DatabaseConnectionError: If connection fails
+            DatabaseError: For other database-related errors
+        """
+        self.logger.debug(
+            "Listing all collections (strict mode)",
+            extra={"base_url": self.base_url}
+        )
+
+        try:
+            # Get collections list via Qdrant REST API
+            response = self.session.get(
+                f"{self.base_url}/collections",
+                timeout=self.timeout_tuple
+            )
+
+            if response.status_code == 200:
+                try:
+                    data = response.json()
+
+                    # Extract collection names from response
+                    # Qdrant API returns: {"result": {"collections": [{"name": "collection1"}, ...]}}
+                    collections = []
+                    if isinstance(data, dict) and "result" in data:
+                        result = data["result"]
+                        if isinstance(result, dict) and "collections" in result:
+                            for collection_info in result["collections"]:
+                                if isinstance(collection_info, dict) and "name" in collection_info:
+                                    collections.append(collection_info["name"])
+
+                    self.logger.info(
+                        "Successfully listed collections (strict mode)",
+                        extra={
+                            "collection_count": len(collections),
+                            "collections": collections[:10]  # Only log first 10 for brevity
+                        }
+                    )
+
+                    return collections
+
+                except (ValueError, KeyError) as e:
+                    error_msg = f"Error parsing collections response: {e}"
+                    self.logger.error(
+                        "Error parsing collections response (strict mode)",
+                        extra={"error": str(e)}
+                    )
+                    raise DatabaseError(error_msg) from e
+            else:
+                error_msg = f"Failed to list collections: HTTP {response.status_code}"
+                self.logger.error(
+                    "Failed to list collections (strict mode)",
+                    extra={
+                        "status_code": response.status_code,
+                        "response_text": response.text[:200]
+                    }
+                )
+                raise DatabaseError(error_msg)
+
+        except requests.exceptions.Timeout as e:
+            error_msg = f"Timeout listing collections (connect: {self.connect_timeout}s, read: {self.read_timeout}s)"
+            self.logger.error(
+                "Timeout listing collections (strict mode)",
+                extra={
+                    "connect_timeout": self.connect_timeout,
+                    "read_timeout": self.read_timeout
+                }
+            )
+            raise DatabaseTimeoutError(error_msg) from e
+        except requests.exceptions.ConnectionError as e:
+            error_msg = "Connection error listing collections"
+            self.logger.error(
+                "Connection error listing collections (strict mode)",
+                extra={"base_url": self.base_url}
+            )
+            raise DatabaseConnectionError(error_msg) from e
+        except requests.exceptions.RequestException as e:
+            error_msg = f"Request error listing collections: {e}"
+            self.logger.error(
+                "Request error listing collections (strict mode)",
+                extra={"error": str(e)}
+            )
+            raise DatabaseError(error_msg) from e
 
     def get_connection_info(self) -> Dict[str, Any]:
         """Get connection configuration information
