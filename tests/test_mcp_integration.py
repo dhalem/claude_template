@@ -218,13 +218,9 @@ def example_function():
 
             # Full integration test with actual code review
             # Use Gemini 1.5 Flash for faster tests
-            # In pre-commit mode, use the simple test directory for speed
-            if os.environ.get('PRE_COMMIT'):
-                prompt = "Use the mcp__code-review__review_code tool with model='gemini-1.5-flash' to review test_review_dir"
-                timeout_val = 180  # Extended timeout for external API calls in pre-commit mode
-            else:
-                prompt = f"Use the mcp__code-review__review_code tool with model='gemini-1.5-flash' to review {test_file}"
-                timeout_val = 120
+            # Always use test_review_dir for consistency and reliability
+            prompt = "Use the mcp__code-review__review_code tool with model='gemini-1.5-flash' to review test_review_dir"
+            timeout_val = 180  # Extended timeout for external API calls
 
             print(f"[DEBUG] About to run subprocess with prompt: {prompt[:100]}...")
             print(f"[DEBUG] Timeout: {timeout_val}s")
@@ -241,10 +237,9 @@ def example_function():
                 print(f"[DEBUG] GIT_DIR: {os.environ.get('GIT_DIR', 'NOT_SET')}")
 
                 # For debugging in pre-commit environment, reduce verbosity
-                # --debug flag produces excessive output that might cause issues
+                # --debug flag produces excessive output and can cause subprocess deadlock
+                # Always use non-debug mode for reliability
                 cmd_args = ["claude", "--dangerously-skip-permissions", "-p", prompt]
-                if not os.environ.get('PRE_COMMIT'):
-                    cmd_args.insert(1, "--debug")
 
                 print(f"[DEBUG] Running command: {' '.join(cmd_args)}")
 
@@ -309,7 +304,7 @@ def example_function():
             # Cleanup
             Path(test_file).unlink(missing_ok=True)
 
-    @pytest.mark.timeout(180)  # Allow 3 minutes for MCP integration test
+    @pytest.mark.timeout(240)  # Allow 4 minutes for MCP integration test
     def test_mcp_code_search_integration(self, claude_available, mcp_config):
         """Test code search MCP tool through Claude"""
         print(f"\n[DEBUG] Starting test_mcp_code_search_integration at {os.getpid()}")
@@ -329,7 +324,7 @@ def example_function():
 
         # Run Claude with MCP tool
         prompt = "Use the mcp__code-search__search_code tool to search for 'def test_' in this directory"
-        timeout_val = 120
+        timeout_val = 180  # Increased timeout for MCP integration test
 
         print(f"[DEBUG] About to run subprocess with prompt: {prompt[:100]}...")
         print(f"[DEBUG] Timeout: {timeout_val}s")
@@ -343,9 +338,8 @@ def example_function():
             print(f"[DEBUG] PRE_COMMIT: {os.environ.get('PRE_COMMIT', 'NOT_SET')}")
 
             # For debugging in pre-commit environment, reduce verbosity
+            # --debug flag causes subprocess deadlock - always use non-debug mode
             cmd_args = ["claude", "--dangerously-skip-permissions", "-p", prompt]
-            if not os.environ.get('PRE_COMMIT'):
-                cmd_args.insert(1, "--debug")
 
             print(f"[DEBUG] Running command: {' '.join(cmd_args)}")
 

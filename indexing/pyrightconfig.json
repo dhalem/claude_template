@@ -1,0 +1,18 @@
+{
+    "include": [
+        "."
+    ],
+    "exclude": [
+        "**/node_modules",
+        "**/__pycache__",
+        "**/.venv",
+        "**/venv",
+        "**/build",
+        "**/dist",
+        "archive",
+        "temp"
+    ],
+    "reportMissingImports": false,
+    "reportMissingTypeStubs": false,
+    "pythonVersion": "3.11"
+}

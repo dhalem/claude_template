@@ -1,0 +1,23 @@
+{
+    "pylsp": {
+        "plugins": {
+            "pycodestyle": {
+                "enabled": true,
+                "maxLineLength": 120
+            },
+            "pyflakes": {
+                "enabled": true
+            },
+            "pylint": {
+                "enabled": false
+            },
+            "ruff": {
+                "enabled": true
+            },
+            "mypy": {
+                "enabled": true,
+                "live_mode": false
+            }
+        }
+    }
+}

@@ -388,6 +388,7 @@ if not os.environ.get('PRE_COMMIT'):
 - **NO config.py changes** without permission
 - **NO pre-commit bypassing** without permission
 - **NO network config changes** without permission
+- **NO INFRASTRUCTURE MODIFICATIONS DURING FEATURE WORK** - Never touch MCP servers, hooks, or system configs while working on features
 - **NO HOOK INSTALLATION** without following safety protocol
   - ✅ SAFE: `./hooks/install-hooks-python-only.sh` (only updates python/ directory)
   - ❌ DANGEROUS: `./hooks/install-hooks.sh` (can destroy Claude installation)

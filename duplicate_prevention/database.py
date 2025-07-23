@@ -964,9 +964,53 @@ class DatabaseConnector:
                             })
                     return results
 
-        except (requests.exceptions.Timeout, requests.exceptions.ConnectionError,
-                requests.exceptions.RequestException, Exception):
-            pass
+        except requests.exceptions.Timeout as e:
+            self.logger.error(
+                "Timeout during vector search",
+                extra={
+                    "collection_name": collection_name,
+                    "error": str(e),
+                    "timeout": self.timeout_tuple
+                }
+            )
+            return []
+        except requests.exceptions.ConnectionError as e:
+            self.logger.error(
+                "Connection error during vector search",
+                extra={
+                    "collection_name": collection_name,
+                    "error": str(e),
+                    "base_url": self.base_url
+                }
+            )
+            return []
+        except requests.exceptions.RequestException as e:
+            self.logger.error(
+                "Request error during vector search",
+                extra={
+                    "collection_name": collection_name,
+                    "error": str(e)
+                }
+            )
+            return []
+        except (ValueError, KeyError) as e:
+            self.logger.error(
+                "Failed to parse search response",
+                extra={
+                    "collection_name": collection_name,
+                    "error": str(e)
+                }
+            )
+            return []
+        except Exception as e:
+            self.logger.error(
+                "Unexpected error during vector search",
+                extra={
+                    "collection_name": collection_name,
+                    "error": str(e)
+                }
+            )
+            return []
 
         return []
 
