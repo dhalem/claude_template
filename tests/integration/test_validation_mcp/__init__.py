@@ -10,6 +10,6 @@
 # NEVER weaken, disable, or bypass guards - they prevent real harm
 
 """
-Utility modules for Test Validation MCP system.
-Provides fingerprinting, token management, and configuration utilities.
+Integration tests for Test Validation MCP components.
+Tests component interactions and end-to-end workflows.
 """

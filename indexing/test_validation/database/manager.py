@@ -109,16 +109,20 @@ class DatabaseManager:
                     CREATE TABLE IF NOT EXISTS {TABLE_TEST_VALIDATIONS} (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
                         test_fingerprint TEXT UNIQUE NOT NULL,
-                        test_name TEXT NOT NULL,
-                        file_path TEXT NOT NULL,
-                        validation_stage TEXT NOT NULL CHECK (validation_stage IN ('design', 'implementation', 'breaking', 'approval')),
-                        status TEXT NOT NULL CHECK (status IN ('PENDING', 'APPROVED', 'REJECTED', 'EXPIRED')),
+                        test_name TEXT,
+                        test_file_path TEXT NOT NULL,
+                        current_stage TEXT NOT NULL CHECK (current_stage IN ('design', 'implementation', 'breaking', 'approval', 'completed', 'failed')),
+                        status TEXT DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'APPROVED', 'REJECTED', 'EXPIRED')),
                         gemini_analysis TEXT,
-                        validation_timestamp DATETIME NOT NULL,
+                        validation_timestamp DATETIME,
+                        created_at DATETIME,
+                        updated_at DATETIME,
                         approval_token TEXT UNIQUE,
                         cost_cents INTEGER DEFAULT 0,
                         user_value_statement TEXT,
-                        expiration_timestamp DATETIME
+                        expiration_timestamp DATETIME,
+                        metadata TEXT,
+                        validation_stages TEXT
                     )
                 ''')
 
@@ -128,10 +132,12 @@ class DatabaseManager:
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
                         test_fingerprint TEXT NOT NULL,
                         stage TEXT NOT NULL CHECK (stage IN ('design', 'implementation', 'breaking', 'approval')),
-                        attempt_number INTEGER NOT NULL,
-                        status TEXT NOT NULL CHECK (status IN ('PENDING', 'APPROVED', 'REJECTED', 'EXPIRED')),
+                        attempt_number INTEGER,
+                        validation_result TEXT NOT NULL,
+                        validated_at DATETIME NOT NULL,
+                        validator_id TEXT,
                         feedback TEXT,
-                        timestamp DATETIME NOT NULL,
+                        timestamp DATETIME,
                         FOREIGN KEY (test_fingerprint) REFERENCES {TABLE_TEST_VALIDATIONS}(test_fingerprint)
                     )
                 ''')
@@ -158,13 +164,16 @@ class DatabaseManager:
                 # Create approval_tokens table
                 cursor.execute(f'''
                     CREATE TABLE IF NOT EXISTS {TABLE_APPROVAL_TOKENS} (
-                        token TEXT PRIMARY KEY,
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
                         test_fingerprint TEXT NOT NULL,
-                        stage TEXT NOT NULL CHECK (stage IN ('design', 'implementation', 'breaking', 'approval')),
-                        issued_timestamp DATETIME NOT NULL,
-                        expires_timestamp DATETIME NOT NULL,
+                        approval_token TEXT UNIQUE NOT NULL,
+                        approved_by TEXT NOT NULL,
+                        approved_at DATETIME NOT NULL,
+                        stage TEXT CHECK (stage IN ('design', 'implementation', 'breaking', 'approval')),
+                        issued_timestamp DATETIME,
+                        expires_timestamp DATETIME,
                         used_timestamp DATETIME,
-                        status TEXT NOT NULL CHECK (status IN ('VALID', 'USED', 'EXPIRED', 'REVOKED')),
+                        status TEXT CHECK (status IN ('VALID', 'USED', 'EXPIRED', 'REVOKED')),
                         FOREIGN KEY (test_fingerprint) REFERENCES {TABLE_TEST_VALIDATIONS}(test_fingerprint)
                     )
                 ''')
@@ -175,6 +184,7 @@ class DatabaseManager:
                     ON {TABLE_APPROVAL_TOKENS} (test_fingerprint)
                 ''')
 
+                # Ensure transaction is committed
                 conn.commit()
                 logger.info("Database tables created successfully")
 
