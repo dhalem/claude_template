@@ -23,7 +23,7 @@ import sys
 import pytest
 
 # Add duplicate_prevention to path for testing
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
 from duplicate_prevention.database import DatabaseConnector
 
@@ -48,11 +48,7 @@ class TestCollectionManagement:
             pass  # Collection might not exist
 
         # This should succeed - create collection with 768-dimensional vectors (UniXcoder default)
-        result = connector.create_collection(
-            collection_name=collection_name,
-            vector_size=768,
-            distance="cosine"
-        )
+        result = connector.create_collection(collection_name=collection_name, vector_size=768, distance="cosine")
 
         assert result is True
 
@@ -78,7 +74,7 @@ class TestCollectionManagement:
         result = connector.create_collection(
             collection_name=collection_name,
             vector_size=512,  # Custom embedding size
-            distance="dot"    # Dot product similarity
+            distance="dot",  # Dot product similarity
         )
 
         assert result is True
@@ -131,7 +127,7 @@ class TestCollectionManagement:
     def test_create_collection_connection_failure(self):
         """Test create_collection handles connection failures gracefully"""
         # Use unreachable host
-        connector = DatabaseConnector(host="192.0.2.1", port=6333, timeout=1)
+        connector = DatabaseConnector(host="localhost", port=1, timeout=0.1)
 
         result = connector.create_collection("test_unreachable", vector_size=768)
         assert result is False
@@ -141,7 +137,7 @@ class TestCollectionManagement:
         connector = DatabaseConnector(host="localhost", port=6333)
 
         # Method should exist and return boolean
-        assert hasattr(connector, 'create_collection')
+        assert hasattr(connector, "create_collection")
 
         # Clean up any existing test collection
         try:
@@ -189,7 +185,7 @@ class TestCollectionExists:
     def test_collection_exists_connection_failure(self):
         """Test collection_exists handles connection failures gracefully"""
         # Use unreachable host
-        connector = DatabaseConnector(host="192.0.2.1", port=6333, timeout=1)
+        connector = DatabaseConnector(host="localhost", port=1, timeout=0.1)
 
         result = connector.collection_exists("test_collection")
         assert result is False
@@ -199,7 +195,7 @@ class TestCollectionExists:
         connector = DatabaseConnector(host="localhost", port=6333)
 
         # Method should exist and return boolean
-        assert hasattr(connector, 'collection_exists')
+        assert hasattr(connector, "collection_exists")
 
         # Test that method returns boolean (False for non-existent collection)
         result = connector.collection_exists("definitely_does_not_exist_12345")
@@ -240,7 +236,7 @@ class TestDeleteCollection:
     def test_delete_collection_connection_failure(self):
         """Test delete_collection handles connection failures gracefully"""
         # Use unreachable host
-        connector = DatabaseConnector(host="192.0.2.1", port=6333, timeout=1)
+        connector = DatabaseConnector(host="localhost", port=1, timeout=0.1)
 
         result = connector.delete_collection("test_collection")
         assert result is False
@@ -250,7 +246,7 @@ class TestDeleteCollection:
         connector = DatabaseConnector(host="localhost", port=6333)
 
         # Method should exist and return boolean
-        assert hasattr(connector, 'delete_collection')
+        assert hasattr(connector, "delete_collection")
 
         # Test that method returns boolean (False for non-existent collection)
         result = connector.delete_collection("definitely_does_not_exist_12345")
@@ -311,7 +307,7 @@ class TestListCollections:
     def test_list_collections_connection_failure(self):
         """Test list_collections handles connection failures gracefully"""
         # Use unreachable host
-        connector = DatabaseConnector(host="192.0.2.1", port=6333, timeout=1)
+        connector = DatabaseConnector(host="localhost", port=1, timeout=0.1)
 
         result = connector.list_collections()
         assert isinstance(result, list)
@@ -322,7 +318,7 @@ class TestListCollections:
         connector = DatabaseConnector(host="localhost", port=6333)
 
         # Method should exist and return list
-        assert hasattr(connector, 'list_collections')
+        assert hasattr(connector, "list_collections")
 
         # Test that method returns list type
         result = connector.list_collections()

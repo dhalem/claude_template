@@ -23,7 +23,7 @@ import sys
 import pytest
 
 # Add duplicate_prevention to path for testing
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
 from duplicate_prevention.database import DatabaseConnector
 
@@ -50,7 +50,7 @@ class TestInsertVectorPoints:
                 collection_name=collection_name,
                 point_id=1,
                 vector=[0.1, 0.2, 0.3, 0.4],
-                metadata={"file_path": "/test/file1.py", "content_hash": "abc123"}
+                metadata={"file_path": "/test/file1.py", "content_hash": "abc123"},
             )
 
             assert result is True
@@ -74,24 +74,21 @@ class TestInsertVectorPoints:
                 {
                     "id": 1,
                     "vector": [0.1, 0.2, 0.3, 0.4],
-                    "metadata": {"file_path": "/test/file1.py", "content_hash": "abc123"}
+                    "metadata": {"file_path": "/test/file1.py", "content_hash": "abc123"},
                 },
                 {
                     "id": 2,
                     "vector": [0.5, 0.6, 0.7, 0.8],
-                    "metadata": {"file_path": "/test/file2.py", "content_hash": "def456"}
+                    "metadata": {"file_path": "/test/file2.py", "content_hash": "def456"},
                 },
                 {
                     "id": 3,
                     "vector": [0.9, 1.0, 1.1, 1.2],
-                    "metadata": {"file_path": "/test/file3.py", "content_hash": "ghi789"}
-                }
+                    "metadata": {"file_path": "/test/file3.py", "content_hash": "ghi789"},
+                },
             ]
 
-            result = connector.insert_points_batch(
-                collection_name=collection_name,
-                points=points
-            )
+            result = connector.insert_points_batch(collection_name=collection_name, points=points)
 
             assert result is True
 
@@ -114,7 +111,7 @@ class TestInsertVectorPoints:
                 collection_name=collection_name,
                 point_id=1,
                 vector=[0.1, 0.2, 0.3],  # Wrong size
-                metadata={"file_path": "/test/file1.py"}
+                metadata={"file_path": "/test/file1.py"},
             )
 
             assert result is False
@@ -133,7 +130,7 @@ class TestInsertVectorPoints:
             collection_name="definitely_does_not_exist_12345",
             point_id=1,
             vector=[0.1, 0.2, 0.3, 0.4],
-            metadata={"file_path": "/test/file1.py"}
+            metadata={"file_path": "/test/file1.py"},
         )
 
         assert result is False
@@ -141,14 +138,14 @@ class TestInsertVectorPoints:
     @pytest.mark.integration
     def test_insert_point_connection_failure(self):
         """Test insert_point handles connection failures gracefully"""
-        # Use unreachable host
-        connector = DatabaseConnector(host="192.0.2.1", port=6333, timeout=1)
+        # Use localhost with non-listening port for immediate connection refusal
+        connector = DatabaseConnector(host="localhost", port=1, timeout=0.1)
 
         result = connector.insert_point(
             collection_name="test_collection",
             point_id=1,
             vector=[0.1, 0.2, 0.3, 0.4],
-            metadata={"file_path": "/test/file1.py"}
+            metadata={"file_path": "/test/file1.py"},
         )
 
         assert result is False
@@ -158,7 +155,7 @@ class TestInsertVectorPoints:
         connector = DatabaseConnector(host="localhost", port=6333)
 
         # Method should exist and return boolean
-        assert hasattr(connector, 'insert_point')
+        assert hasattr(connector, "insert_point")
 
 
 class TestSearchSimilarVectors:
@@ -179,28 +176,25 @@ class TestSearchSimilarVectors:
                 {
                     "id": 1,
                     "vector": [1.0, 0.0, 0.0, 0.0],  # Unit vector along first axis
-                    "metadata": {"file_path": "/test/similar1.py", "content_hash": "abc123"}
+                    "metadata": {"file_path": "/test/similar1.py", "content_hash": "abc123"},
                 },
                 {
                     "id": 2,
                     "vector": [0.0, 1.0, 0.0, 0.0],  # Unit vector along second axis
-                    "metadata": {"file_path": "/test/different1.py", "content_hash": "def456"}
+                    "metadata": {"file_path": "/test/different1.py", "content_hash": "def456"},
                 },
                 {
                     "id": 3,
                     "vector": [0.9, 0.1, 0.0, 0.0],  # Very similar to first vector
-                    "metadata": {"file_path": "/test/similar2.py", "content_hash": "ghi789"}
-                }
+                    "metadata": {"file_path": "/test/similar2.py", "content_hash": "ghi789"},
+                },
             ]
 
             connector.insert_points_batch(collection_name, test_points)
 
             # Search for vectors similar to [1.0, 0.0, 0.0, 0.0]
             results = connector.search_similar_vectors(
-                collection_name=collection_name,
-                query_vector=[1.0, 0.0, 0.0, 0.0],
-                limit=2,
-                score_threshold=0.8
+                collection_name=collection_name, query_vector=[1.0, 0.0, 0.0, 0.0], limit=2, score_threshold=0.8
             )
 
             # Should return list of matches
@@ -231,18 +225,13 @@ class TestSearchSimilarVectors:
 
         try:
             # Insert 5 test points
-            test_points = [
-                {"id": i, "vector": [float(i), float(i+1)], "metadata": {"idx": i}}
-                for i in range(1, 6)
-            ]
+            test_points = [{"id": i, "vector": [float(i), float(i + 1)], "metadata": {"idx": i}} for i in range(1, 6)]
 
             connector.insert_points_batch(collection_name, test_points)
 
             # Search with limit=3
             results = connector.search_similar_vectors(
-                collection_name=collection_name,
-                query_vector=[1.0, 2.0],
-                limit=3
+                collection_name=collection_name, query_vector=[1.0, 2.0], limit=3
             )
 
             # Should return at most 3 results
@@ -265,9 +254,7 @@ class TestSearchSimilarVectors:
         try:
             # Search empty collection
             results = connector.search_similar_vectors(
-                collection_name=collection_name,
-                query_vector=[1.0, 0.0, 0.0, 0.0],
-                limit=5
+                collection_name=collection_name, query_vector=[1.0, 0.0, 0.0, 0.0], limit=5
             )
 
             # Should return empty list
@@ -285,9 +272,7 @@ class TestSearchSimilarVectors:
 
         # Search non-existent collection
         results = connector.search_similar_vectors(
-            collection_name="definitely_does_not_exist_12345",
-            query_vector=[1.0, 0.0, 0.0, 0.0],
-            limit=5
+            collection_name="definitely_does_not_exist_12345", query_vector=[1.0, 0.0, 0.0, 0.0], limit=5
         )
 
         # Should return empty list on failure
@@ -297,13 +282,11 @@ class TestSearchSimilarVectors:
     @pytest.mark.integration
     def test_search_similar_vectors_connection_failure(self):
         """Test vector search handles connection failures gracefully"""
-        # Use unreachable host
-        connector = DatabaseConnector(host="192.0.2.1", port=6333, timeout=1)
+        # Use localhost with non-listening port for immediate connection refusal
+        connector = DatabaseConnector(host="localhost", port=1, timeout=0.1)
 
         results = connector.search_similar_vectors(
-            collection_name="test_collection",
-            query_vector=[1.0, 0.0, 0.0, 0.0],
-            limit=5
+            collection_name="test_collection", query_vector=[1.0, 0.0, 0.0, 0.0], limit=5
         )
 
         # Should return empty list on connection failure
@@ -315,7 +298,7 @@ class TestSearchSimilarVectors:
         connector = DatabaseConnector(host="localhost", port=6333)
 
         # Method should exist and return list
-        assert hasattr(connector, 'search_similar_vectors')
+        assert hasattr(connector, "search_similar_vectors")
 
 
 class TestUpdateVectorPoints:
@@ -336,7 +319,7 @@ class TestUpdateVectorPoints:
                 collection_name=collection_name,
                 point_id=1,
                 vector=[0.1, 0.2, 0.3, 0.4],
-                metadata={"file_path": "/test/old_file.py", "version": 1}
+                metadata={"file_path": "/test/old_file.py", "version": 1},
             )
 
             # Update the point
@@ -344,7 +327,7 @@ class TestUpdateVectorPoints:
                 collection_name=collection_name,
                 point_id=1,
                 vector=[0.5, 0.6, 0.7, 0.8],
-                metadata={"file_path": "/test/new_file.py", "version": 2}
+                metadata={"file_path": "/test/new_file.py", "version": 2},
             )
 
             assert result is True
@@ -368,7 +351,7 @@ class TestUpdateVectorPoints:
                 collection_name=collection_name,
                 point_id=1,
                 vector=[0.1, 0.2, 0.3, 0.4],
-                metadata={"file_path": "/test/file.py", "status": "draft"}
+                metadata={"file_path": "/test/file.py", "status": "draft"},
             )
 
             # Update only metadata (vector=None to keep unchanged)
@@ -376,7 +359,7 @@ class TestUpdateVectorPoints:
                 collection_name=collection_name,
                 point_id=1,
                 vector=None,  # Keep existing vector
-                metadata={"file_path": "/test/file.py", "status": "final"}
+                metadata={"file_path": "/test/file.py", "status": "final"},
             )
 
             assert result is True
@@ -400,7 +383,7 @@ class TestUpdateVectorPoints:
                 collection_name=collection_name,
                 point_id=999,  # Doesn't exist
                 vector=[0.1, 0.2, 0.3, 0.4],
-                metadata={"file_path": "/test/file.py"}
+                metadata={"file_path": "/test/file.py"},
             )
 
             assert result is False
@@ -412,14 +395,14 @@ class TestUpdateVectorPoints:
     @pytest.mark.integration
     def test_update_point_connection_failure(self):
         """Test update_point handles connection failures gracefully"""
-        # Use unreachable host
-        connector = DatabaseConnector(host="192.0.2.1", port=6333, timeout=1)
+        # Use localhost with non-listening port for immediate connection refusal
+        connector = DatabaseConnector(host="localhost", port=1, timeout=0.1)
 
         result = connector.update_point(
             collection_name="test_collection",
             point_id=1,
             vector=[0.1, 0.2, 0.3, 0.4],
-            metadata={"file_path": "/test/file.py"}
+            metadata={"file_path": "/test/file.py"},
         )
 
         assert result is False
@@ -429,7 +412,7 @@ class TestUpdateVectorPoints:
         connector = DatabaseConnector(host="localhost", port=6333)
 
         # Method should exist and return boolean
-        assert hasattr(connector, 'update_point')
+        assert hasattr(connector, "update_point")
 
 
 class TestDeleteVectorPoints:
@@ -450,14 +433,11 @@ class TestDeleteVectorPoints:
                 collection_name=collection_name,
                 point_id=1,
                 vector=[0.1, 0.2, 0.3, 0.4],
-                metadata={"file_path": "/test/file.py"}
+                metadata={"file_path": "/test/file.py"},
             )
 
             # Delete the point
-            result = connector.delete_point(
-                collection_name=collection_name,
-                point_id=1
-            )
+            result = connector.delete_point(collection_name=collection_name, point_id=1)
 
             assert result is True
 
@@ -477,16 +457,13 @@ class TestDeleteVectorPoints:
         try:
             # Insert multiple points
             test_points = [
-                {"id": i, "vector": [float(i), float(i+1), float(i+2), float(i+3)], "metadata": {"idx": i}}
+                {"id": i, "vector": [float(i), float(i + 1), float(i + 2), float(i + 3)], "metadata": {"idx": i}}
                 for i in range(1, 4)
             ]
             connector.insert_points_batch(collection_name, test_points)
 
             # Delete multiple points
-            result = connector.delete_points_batch(
-                collection_name=collection_name,
-                point_ids=[1, 2, 3]
-            )
+            result = connector.delete_points_batch(collection_name=collection_name, point_ids=[1, 2, 3])
 
             assert result is True
 
@@ -510,10 +487,7 @@ class TestDeleteVectorPoints:
 
         try:
             # Delete non-existent point - should be idempotent (return True)
-            result = connector.delete_point(
-                collection_name=collection_name,
-                point_id=999  # Doesn't exist
-            )
+            result = connector.delete_point(collection_name=collection_name, point_id=999)  # Doesn't exist
 
             # Idempotent behavior: if point doesn't exist after delete, operation succeeded
             assert result is True
@@ -525,13 +499,10 @@ class TestDeleteVectorPoints:
     @pytest.mark.integration
     def test_delete_point_connection_failure(self):
         """Test delete_point handles connection failures gracefully"""
-        # Use unreachable host
-        connector = DatabaseConnector(host="192.0.2.1", port=6333, timeout=1)
+        # Use localhost with non-listening port for immediate connection refusal
+        connector = DatabaseConnector(host="localhost", port=1, timeout=0.1)
 
-        result = connector.delete_point(
-            collection_name="test_collection",
-            point_id=1
-        )
+        result = connector.delete_point(collection_name="test_collection", point_id=1)
 
         assert result is False
 
@@ -540,7 +511,7 @@ class TestDeleteVectorPoints:
         connector = DatabaseConnector(host="localhost", port=6333)
 
         # Method should exist and return boolean
-        assert hasattr(connector, 'delete_point')
+        assert hasattr(connector, "delete_point")
 
 
 # TDD RED Phase Notes:

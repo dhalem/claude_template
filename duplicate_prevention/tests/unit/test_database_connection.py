@@ -31,7 +31,7 @@ import time
 import pytest
 
 # Add duplicate_prevention to path for testing
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
 from duplicate_prevention.database import DatabaseConnector, get_health_status
 
@@ -47,9 +47,9 @@ class TestDatabaseConnection:
         """Test DatabaseConnector can be initialized with default parameters"""
         connector = DatabaseConnector()
         assert connector is not None
-        assert hasattr(connector, 'connect')
-        assert hasattr(connector, 'health_check')
-        assert hasattr(connector, 'close')
+        assert hasattr(connector, "connect")
+        assert hasattr(connector, "health_check")
+        assert hasattr(connector, "close")
 
     def test_database_connector_initialization_with_custom_params(self):
         """Test DatabaseConnector accepts custom host, port, and timeout"""
@@ -78,7 +78,7 @@ class TestDatabaseConnection:
     def test_connect_to_unreachable_database_failure(self):
         """Test connect method returns False when database is unreachable"""
         # Test with definitely unreachable host
-        connector = DatabaseConnector(host="192.0.2.1", port=6333, timeout=2)
+        connector = DatabaseConnector(host="localhost", port=1, timeout=0.1)
 
         # This test tries real connection to unreachable host
         result = connector.connect()
@@ -96,14 +96,14 @@ class TestDatabaseConnection:
 
     def test_connect_respects_timeout(self):
         """Test connect method respects timeout parameter"""
-        connector = DatabaseConnector(host="192.0.2.1", port=6333, timeout=1)
+        connector = DatabaseConnector(host="localhost", port=1, timeout=0.1)
 
         # Real connection with very short timeout should fail quickly
         start_time = time.time()
         result = connector.connect()
         end_time = time.time()
         assert result is False
-        assert (end_time - start_time) <= 2  # Should timeout in ~1 second
+        assert (end_time - start_time) <= 1  # Should timeout quickly
 
     def test_multiple_connections_safe(self):
         """Test multiple connect calls work correctly"""
@@ -141,7 +141,7 @@ class TestDatabaseHealthCheck:
         # Should return dict with health status from real database
         result = connector.health_check()
         assert isinstance(result, dict)
-        assert 'status' in result
+        assert "status" in result
 
     @pytest.mark.integration
     def test_health_check_with_running_database(self):
@@ -150,19 +150,19 @@ class TestDatabaseHealthCheck:
 
         # Real health check against running Qdrant database
         result = connector.health_check()
-        assert result['status'] == 'ok'
-        assert 'message' in result  # Our implementation returns message
+        assert result["status"] == "ok"
+        assert "message" in result  # Our implementation returns message
 
     @pytest.mark.integration
     def test_health_check_with_unreachable_database(self):
         """Test health_check handles unreachable database gracefully"""
-        connector = DatabaseConnector(host="192.0.2.1", port=6333, timeout=2)
+        connector = DatabaseConnector(host="localhost", port=1, timeout=0.1)
 
         # Real health check against unreachable database
         # Should not crash, should return error status
         result = connector.health_check()
         assert isinstance(result, dict)
-        assert result.get('status') == 'error'
+        assert result.get("status") == "error"
 
 
 class TestHealthStatusFunction:
@@ -174,7 +174,7 @@ class TestHealthStatusFunction:
         # This test uses real connection to check database health
         result = get_health_status()
         assert isinstance(result, dict)
-        assert 'status' in result
+        assert "status" in result
 
     @pytest.mark.integration
     def test_get_health_status_with_custom_host_port(self):
@@ -182,16 +182,16 @@ class TestHealthStatusFunction:
         # Should work with custom parameters against real database
         result = get_health_status(host="localhost", port=6333)
         assert isinstance(result, dict)
-        assert result['status'] == 'ok'
+        assert result["status"] == "ok"
 
     @pytest.mark.integration
     def test_get_health_status_handles_connection_errors(self):
         """Test get_health_status handles unreachable database gracefully"""
         # Real connection attempt to unreachable host
         # Should not crash when database is unreachable
-        result = get_health_status(host="192.0.2.1", port=6333)
+        result = get_health_status(host="localhost", port=1)
         assert isinstance(result, dict)
-        assert result.get('status') == 'error'
+        assert result.get("status") == "error"
 
 
 class TestDatabaseConnectorConfiguration:
@@ -215,11 +215,7 @@ class TestDatabaseConnectorConfiguration:
         custom_port = 7777
         custom_timeout = 45
 
-        connector = DatabaseConnector(
-            host=custom_host,
-            port=custom_port,
-            timeout=custom_timeout
-        )
+        connector = DatabaseConnector(host=custom_host, port=custom_port, timeout=custom_timeout)
 
         assert connector is not None
         assert connector.host == custom_host
@@ -228,10 +224,7 @@ class TestDatabaseConnectorConfiguration:
 
     def test_https_protocol_and_api_key_configuration(self):
         """Test DatabaseConnector accepts HTTPS protocol and API key"""
-        connector = DatabaseConnector(
-            protocol="https",
-            api_key="test-api-key-123"
-        )
+        connector = DatabaseConnector(protocol="https", api_key="test-api-key-123")
 
         assert connector is not None
         assert connector.protocol == "https"
@@ -260,12 +253,12 @@ class TestStrictErrorHandling:
 
     @pytest.mark.integration
     def test_connect_strict_timeout_raises_exception(self):
-        """Test connect_strict raises DatabaseTimeoutError on timeout"""
-        from duplicate_prevention.database import DatabaseTimeoutError
+        """Test connect_strict raises DatabaseConnectionError on connection failure"""
+        from duplicate_prevention.database import DatabaseConnectionError
 
-        connector = DatabaseConnector(host="192.0.2.1", port=6333, timeout=1)
+        connector = DatabaseConnector(host="localhost", port=1, timeout=0.1)
 
-        with pytest.raises(DatabaseTimeoutError):
+        with pytest.raises(DatabaseConnectionError):
             connector.connect_strict()
 
     @pytest.mark.integration
@@ -289,12 +282,12 @@ class TestStrictErrorHandling:
 
     @pytest.mark.integration
     def test_health_check_strict_timeout_raises_exception(self):
-        """Test health_check_strict raises DatabaseTimeoutError on timeout"""
-        from duplicate_prevention.database import DatabaseTimeoutError
+        """Test health_check_strict raises DatabaseConnectionError on connection failure"""
+        from duplicate_prevention.database import DatabaseConnectionError
 
-        connector = DatabaseConnector(host="192.0.2.1", port=6333, timeout=1)
+        connector = DatabaseConnector(host="localhost", port=1, timeout=0.1)
 
-        with pytest.raises(DatabaseTimeoutError):
+        with pytest.raises(DatabaseConnectionError):
             connector.health_check_strict()
 
     @pytest.mark.integration

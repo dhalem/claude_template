@@ -21,7 +21,7 @@ import sys
 import pytest
 
 # Add duplicate_prevention to path for testing
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
 from duplicate_prevention.database import DatabaseConnectionError, DatabaseConnector, DatabaseError
 
@@ -44,14 +44,12 @@ class TestInsertVectorPointsStrict:
                 collection_name=collection_name,
                 point_id=1,
                 vector=[0.1, 0.2, 0.3, 0.4],
-                metadata={"file_path": "/test/file1.py", "content_hash": "abc123"}
+                metadata={"file_path": "/test/file1.py", "content_hash": "abc123"},
             )
 
             # Verify point was inserted
             results = connector.search_similar_vectors(
-                collection_name=collection_name,
-                query_vector=[0.1, 0.2, 0.3, 0.4],
-                limit=1
+                collection_name=collection_name, query_vector=[0.1, 0.2, 0.3, 0.4], limit=1
             )
             assert len(results) == 1
             assert results[0]["id"] == 1
@@ -67,10 +65,7 @@ class TestInsertVectorPointsStrict:
 
         with pytest.raises(ValueError) as exc_info:
             connector.insert_point_strict(
-                collection_name="",
-                point_id=1,
-                vector=[0.1, 0.2, 0.3, 0.4],
-                metadata={"test": "data"}
+                collection_name="", point_id=1, vector=[0.1, 0.2, 0.3, 0.4], metadata={"test": "data"}
             )
 
         assert "empty collection name" in str(exc_info.value)
@@ -83,10 +78,7 @@ class TestInsertVectorPointsStrict:
         # Test negative ID
         with pytest.raises(ValueError) as exc_info:
             connector.insert_point_strict(
-                collection_name="test_collection",
-                point_id=-1,
-                vector=[0.1, 0.2, 0.3, 0.4],
-                metadata={"test": "data"}
+                collection_name="test_collection", point_id=-1, vector=[0.1, 0.2, 0.3, 0.4], metadata={"test": "data"}
             )
 
         assert "Invalid point ID" in str(exc_info.value)
@@ -99,10 +91,7 @@ class TestInsertVectorPointsStrict:
         # Test empty vector
         with pytest.raises(ValueError) as exc_info:
             connector.insert_point_strict(
-                collection_name="test_collection",
-                point_id=1,
-                vector=[],
-                metadata={"test": "data"}
+                collection_name="test_collection", point_id=1, vector=[], metadata={"test": "data"}
             )
 
         assert "Invalid vector data" in str(exc_info.value)
@@ -117,7 +106,7 @@ class TestInsertVectorPointsStrict:
                 collection_name="definitely_does_not_exist_12345",
                 point_id=1,
                 vector=[0.1, 0.2, 0.3, 0.4],
-                metadata={"test": "data"}
+                metadata={"test": "data"},
             )
 
         assert "does not exist" in str(exc_info.value)
@@ -126,14 +115,11 @@ class TestInsertVectorPointsStrict:
     def test_insert_point_strict_connection_failure(self):
         """Test insert_point_strict raises DatabaseConnectionError on connection failure"""
         # Use unreachable host
-        connector = DatabaseConnector(host="192.0.2.1", port=6333, timeout=1)
+        connector = DatabaseConnector(host="localhost", port=1, timeout=0.1)
 
         with pytest.raises(DatabaseConnectionError) as exc_info:
             connector.insert_point_strict(
-                collection_name="test_collection",
-                point_id=1,
-                vector=[0.1, 0.2, 0.3, 0.4],
-                metadata={"test": "data"}
+                collection_name="test_collection", point_id=1, vector=[0.1, 0.2, 0.3, 0.4], metadata={"test": "data"}
             )
 
         assert "Connection error" in str(exc_info.value)
@@ -154,28 +140,15 @@ class TestInsertPointsBatchStrict:
         try:
             # Insert multiple points - should not raise exception
             points = [
-                {
-                    "id": 1,
-                    "vector": [0.1, 0.2, 0.3, 0.4],
-                    "metadata": {"file_path": "/test/file1.py"}
-                },
-                {
-                    "id": 2,
-                    "vector": [0.5, 0.6, 0.7, 0.8],
-                    "metadata": {"file_path": "/test/file2.py"}
-                }
+                {"id": 1, "vector": [0.1, 0.2, 0.3, 0.4], "metadata": {"file_path": "/test/file1.py"}},
+                {"id": 2, "vector": [0.5, 0.6, 0.7, 0.8], "metadata": {"file_path": "/test/file2.py"}},
             ]
 
-            connector.insert_points_batch_strict(
-                collection_name=collection_name,
-                points=points
-            )
+            connector.insert_points_batch_strict(collection_name=collection_name, points=points)
 
             # Verify points were inserted
             results = connector.search_similar_vectors(
-                collection_name=collection_name,
-                query_vector=[0.1, 0.2, 0.3, 0.4],
-                limit=10
+                collection_name=collection_name, query_vector=[0.1, 0.2, 0.3, 0.4], limit=10
             )
             assert len(results) >= 2
 
@@ -189,10 +162,7 @@ class TestInsertPointsBatchStrict:
         connector = DatabaseConnector(host="localhost", port=6333)
 
         with pytest.raises(ValueError) as exc_info:
-            connector.insert_points_batch_strict(
-                collection_name="test_collection",
-                points=[]
-            )
+            connector.insert_points_batch_strict(collection_name="test_collection", points=[])
 
         assert "non-empty list" in str(exc_info.value)
 
@@ -204,18 +174,14 @@ class TestInsertPointsBatchStrict:
         # Missing 'id' field
         with pytest.raises(ValueError) as exc_info:
             connector.insert_points_batch_strict(
-                collection_name="test_collection",
-                points=[{"vector": [0.1, 0.2, 0.3, 0.4]}]
+                collection_name="test_collection", points=[{"vector": [0.1, 0.2, 0.3, 0.4]}]
             )
 
         assert "missing required 'id' field" in str(exc_info.value)
 
         # Missing 'vector' field
         with pytest.raises(ValueError) as exc_info:
-            connector.insert_points_batch_strict(
-                collection_name="test_collection",
-                points=[{"id": 1}]
-            )
+            connector.insert_points_batch_strict(collection_name="test_collection", points=[{"id": 1}])
 
         assert "missing required 'vector' field" in str(exc_info.value)
 
@@ -227,10 +193,7 @@ class TestInsertPointsBatchStrict:
         points = [{"id": 1, "vector": [0.1, 0.2, 0.3, 0.4]}]
 
         with pytest.raises(DatabaseError) as exc_info:
-            connector.insert_points_batch_strict(
-                collection_name="definitely_does_not_exist_12345",
-                points=points
-            )
+            connector.insert_points_batch_strict(collection_name="definitely_does_not_exist_12345", points=points)
 
         assert "does not exist" in str(exc_info.value)
 
@@ -250,24 +213,14 @@ class TestSearchSimilarVectorsStrict:
         try:
             # Insert test vectors
             test_points = [
-                {
-                    "id": 1,
-                    "vector": [1.0, 0.0, 0.0, 0.0],
-                    "metadata": {"file_path": "/test/file1.py"}
-                },
-                {
-                    "id": 2,
-                    "vector": [0.9, 0.1, 0.0, 0.0],
-                    "metadata": {"file_path": "/test/file2.py"}
-                }
+                {"id": 1, "vector": [1.0, 0.0, 0.0, 0.0], "metadata": {"file_path": "/test/file1.py"}},
+                {"id": 2, "vector": [0.9, 0.1, 0.0, 0.0], "metadata": {"file_path": "/test/file2.py"}},
             ]
             connector.insert_points_batch(collection_name, test_points)
 
             # Search - should not raise exception
             results = connector.search_similar_vectors_strict(
-                collection_name=collection_name,
-                query_vector=[1.0, 0.0, 0.0, 0.0],
-                limit=2
+                collection_name=collection_name, query_vector=[1.0, 0.0, 0.0, 0.0], limit=2
             )
 
             assert isinstance(results, list)
@@ -283,11 +236,7 @@ class TestSearchSimilarVectorsStrict:
         connector = DatabaseConnector(host="localhost", port=6333)
 
         with pytest.raises(ValueError) as exc_info:
-            connector.search_similar_vectors_strict(
-                collection_name="",
-                query_vector=[1.0, 0.0, 0.0, 0.0],
-                limit=5
-            )
+            connector.search_similar_vectors_strict(collection_name="", query_vector=[1.0, 0.0, 0.0, 0.0], limit=5)
 
         assert "empty collection name" in str(exc_info.value)
 
@@ -297,11 +246,7 @@ class TestSearchSimilarVectorsStrict:
         connector = DatabaseConnector(host="localhost", port=6333)
 
         with pytest.raises(ValueError) as exc_info:
-            connector.search_similar_vectors_strict(
-                collection_name="test_collection",
-                query_vector=[],
-                limit=5
-            )
+            connector.search_similar_vectors_strict(collection_name="test_collection", query_vector=[], limit=5)
 
         assert "non-empty list" in str(exc_info.value)
 
@@ -312,9 +257,7 @@ class TestSearchSimilarVectorsStrict:
 
         with pytest.raises(ValueError) as exc_info:
             connector.search_similar_vectors_strict(
-                collection_name="test_collection",
-                query_vector=[1.0, 0.0, 0.0, 0.0],
-                limit=0
+                collection_name="test_collection", query_vector=[1.0, 0.0, 0.0, 0.0], limit=0
             )
 
         assert "Limit must be positive" in str(exc_info.value)
@@ -326,9 +269,7 @@ class TestSearchSimilarVectorsStrict:
 
         with pytest.raises(DatabaseError) as exc_info:
             connector.search_similar_vectors_strict(
-                collection_name="definitely_does_not_exist_12345",
-                query_vector=[1.0, 0.0, 0.0, 0.0],
-                limit=5
+                collection_name="definitely_does_not_exist_12345", query_vector=[1.0, 0.0, 0.0, 0.0], limit=5
             )
 
         assert "does not exist" in str(exc_info.value)
@@ -349,25 +290,17 @@ class TestUpdateVectorPointsStrict:
         try:
             # Insert initial point
             connector.insert_point_strict(
-                collection_name=collection_name,
-                point_id=1,
-                vector=[0.1, 0.2, 0.3, 0.4],
-                metadata={"version": 1}
+                collection_name=collection_name, point_id=1, vector=[0.1, 0.2, 0.3, 0.4], metadata={"version": 1}
             )
 
             # Update the point - should not raise exception
             connector.update_point_strict(
-                collection_name=collection_name,
-                point_id=1,
-                vector=[0.5, 0.6, 0.7, 0.8],
-                metadata={"version": 2}
+                collection_name=collection_name, point_id=1, vector=[0.5, 0.6, 0.7, 0.8], metadata={"version": 2}
             )
 
             # Verify update
             results = connector.search_similar_vectors(
-                collection_name=collection_name,
-                query_vector=[0.5, 0.6, 0.7, 0.8],
-                limit=1
+                collection_name=collection_name, query_vector=[0.5, 0.6, 0.7, 0.8], limit=1
             )
             assert len(results) == 1
             assert results[0]["metadata"]["version"] == 2
@@ -382,11 +315,7 @@ class TestUpdateVectorPointsStrict:
         connector = DatabaseConnector(host="localhost", port=6333)
 
         with pytest.raises(ValueError) as exc_info:
-            connector.update_point_strict(
-                collection_name="",
-                point_id=1,
-                vector=[0.1, 0.2, 0.3, 0.4]
-            )
+            connector.update_point_strict(collection_name="", point_id=1, vector=[0.1, 0.2, 0.3, 0.4])
 
         assert "cannot be empty" in str(exc_info.value)
 
@@ -396,12 +325,7 @@ class TestUpdateVectorPointsStrict:
         connector = DatabaseConnector(host="localhost", port=6333)
 
         with pytest.raises(ValueError) as exc_info:
-            connector.update_point_strict(
-                collection_name="test_collection",
-                point_id=1,
-                vector=None,
-                metadata=None
-            )
+            connector.update_point_strict(collection_name="test_collection", point_id=1, vector=None, metadata=None)
 
         assert "At least one of vector or metadata must be provided" in str(exc_info.value)
 
@@ -417,9 +341,7 @@ class TestUpdateVectorPointsStrict:
         try:
             with pytest.raises(DatabaseError) as exc_info:
                 connector.update_point_strict(
-                    collection_name=collection_name,
-                    point_id=999,
-                    vector=[0.1, 0.2, 0.3, 0.4]
+                    collection_name=collection_name, point_id=999, vector=[0.1, 0.2, 0.3, 0.4]
                 )
 
             assert "does not exist" in str(exc_info.value)
@@ -435,9 +357,7 @@ class TestUpdateVectorPointsStrict:
 
         with pytest.raises(DatabaseError) as exc_info:
             connector.update_point_strict(
-                collection_name="definitely_does_not_exist_12345",
-                point_id=1,
-                vector=[0.1, 0.2, 0.3, 0.4]
+                collection_name="definitely_does_not_exist_12345", point_id=1, vector=[0.1, 0.2, 0.3, 0.4]
             )
 
         assert "does not exist" in str(exc_info.value)
@@ -458,23 +378,15 @@ class TestDeleteVectorPointsStrict:
         try:
             # Insert point to delete
             connector.insert_point(
-                collection_name=collection_name,
-                point_id=1,
-                vector=[0.1, 0.2, 0.3, 0.4],
-                metadata={"test": "data"}
+                collection_name=collection_name, point_id=1, vector=[0.1, 0.2, 0.3, 0.4], metadata={"test": "data"}
             )
 
             # Delete the point - should not raise exception
-            connector.delete_point_strict(
-                collection_name=collection_name,
-                point_id=1
-            )
+            connector.delete_point_strict(collection_name=collection_name, point_id=1)
 
             # Verify deletion
             results = connector.search_similar_vectors(
-                collection_name=collection_name,
-                query_vector=[0.1, 0.2, 0.3, 0.4],
-                limit=1
+                collection_name=collection_name, query_vector=[0.1, 0.2, 0.3, 0.4], limit=1
             )
             assert len(results) == 0
 
@@ -493,10 +405,7 @@ class TestDeleteVectorPointsStrict:
 
         try:
             # Delete non-existent point - should not raise exception (idempotent)
-            connector.delete_point_strict(
-                collection_name=collection_name,
-                point_id=999
-            )
+            connector.delete_point_strict(collection_name=collection_name, point_id=999)
 
         finally:
             # Clean up
@@ -508,10 +417,7 @@ class TestDeleteVectorPointsStrict:
         connector = DatabaseConnector(host="localhost", port=6333)
 
         with pytest.raises(ValueError) as exc_info:
-            connector.delete_point_strict(
-                collection_name="",
-                point_id=1
-            )
+            connector.delete_point_strict(collection_name="", point_id=1)
 
         assert "cannot be empty" in str(exc_info.value)
 
@@ -521,10 +427,7 @@ class TestDeleteVectorPointsStrict:
         connector = DatabaseConnector(host="localhost", port=6333)
 
         with pytest.raises(DatabaseError) as exc_info:
-            connector.delete_point_strict(
-                collection_name="definitely_does_not_exist_12345",
-                point_id=1
-            )
+            connector.delete_point_strict(collection_name="definitely_does_not_exist_12345", point_id=1)
 
         assert "does not exist" in str(exc_info.value)
 
@@ -544,22 +447,16 @@ class TestDeletePointsBatchStrict:
         try:
             # Insert points to delete
             test_points = [
-                {"id": i, "vector": [float(i), float(i+1), float(i+2), float(i+3)]}
-                for i in range(1, 4)
+                {"id": i, "vector": [float(i), float(i + 1), float(i + 2), float(i + 3)]} for i in range(1, 4)
             ]
             connector.insert_points_batch(collection_name, test_points)
 
             # Delete multiple points - should not raise exception
-            connector.delete_points_batch_strict(
-                collection_name=collection_name,
-                point_ids=[1, 2, 3]
-            )
+            connector.delete_points_batch_strict(collection_name=collection_name, point_ids=[1, 2, 3])
 
             # Verify deletion
             results = connector.search_similar_vectors(
-                collection_name=collection_name,
-                query_vector=[1.0, 2.0, 3.0, 4.0],
-                limit=10
+                collection_name=collection_name, query_vector=[1.0, 2.0, 3.0, 4.0], limit=10
             )
             assert len(results) == 0
 
@@ -573,10 +470,7 @@ class TestDeletePointsBatchStrict:
         connector = DatabaseConnector(host="localhost", port=6333)
 
         with pytest.raises(ValueError) as exc_info:
-            connector.delete_points_batch_strict(
-                collection_name="test_collection",
-                point_ids=[]
-            )
+            connector.delete_points_batch_strict(collection_name="test_collection", point_ids=[])
 
         assert "non-empty list" in str(exc_info.value)
 
@@ -586,10 +480,7 @@ class TestDeletePointsBatchStrict:
         connector = DatabaseConnector(host="localhost", port=6333)
 
         with pytest.raises(ValueError) as exc_info:
-            connector.delete_points_batch_strict(
-                collection_name="test_collection",
-                point_ids=[1, -5, 3]
-            )
+            connector.delete_points_batch_strict(collection_name="test_collection", point_ids=[1, -5, 3])
 
         assert "Invalid point ID at index 1" in str(exc_info.value)
 
@@ -599,10 +490,7 @@ class TestDeletePointsBatchStrict:
         connector = DatabaseConnector(host="localhost", port=6333)
 
         with pytest.raises(DatabaseError) as exc_info:
-            connector.delete_points_batch_strict(
-                collection_name="definitely_does_not_exist_12345",
-                point_ids=[1, 2, 3]
-            )
+            connector.delete_points_batch_strict(collection_name="definitely_does_not_exist_12345", point_ids=[1, 2, 3])
 
         assert "does not exist" in str(exc_info.value)
 
@@ -610,13 +498,10 @@ class TestDeletePointsBatchStrict:
     def test_delete_points_batch_strict_connection_failure(self):
         """Test delete_points_batch_strict raises DatabaseConnectionError on connection failure"""
         # Use unreachable host
-        connector = DatabaseConnector(host="192.0.2.1", port=6333, timeout=1)
+        connector = DatabaseConnector(host="localhost", port=1, timeout=0.1)
 
         with pytest.raises(DatabaseConnectionError) as exc_info:
-            connector.delete_points_batch_strict(
-                collection_name="test_collection",
-                point_ids=[1, 2, 3]
-            )
+            connector.delete_points_batch_strict(collection_name="test_collection", point_ids=[1, 2, 3])
 
         assert "Connection error" in str(exc_info.value)
 

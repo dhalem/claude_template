@@ -190,10 +190,18 @@ repos:
   hooks:
   - id: python-hooks-tests
     name: Python Hooks Test Suite
-    entry: bash -c 'cd hooks/python && python3 -m pytest -v'
+    entry: bash -c 'cd hooks/python && ../../venv/bin/python -m pytest -v'
     language: system
     files: ^hooks/python/.*\.py$
     pass_filenames: false
+    verbose: true
+  - id: duplicate-prevention-check
+    name: "\U0001F50D Duplicate Code Prevention Check"
+    entry: bash -c './hooks/scripts/pre-commit-duplicate-check.sh'
+    language: system
+    types:
+    - text
+    files: \.(py|js|jsx|ts|tsx|java|cpp|c|go|rs)$
     verbose: true
 - repo: local
   hooks:

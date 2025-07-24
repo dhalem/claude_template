@@ -22,7 +22,7 @@ import sys
 import pytest
 
 # Add duplicate_prevention to path for testing
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
 from duplicate_prevention.database import (
     DatabaseConnectionError,
@@ -48,11 +48,7 @@ class TestCreateCollectionStrict:
             pass
 
         # This should succeed and not return anything (void method)
-        result = connector.create_collection_strict(
-            collection_name=collection_name,
-            vector_size=768,
-            distance="cosine"
-        )
+        result = connector.create_collection_strict(collection_name=collection_name, vector_size=768, distance="cosine")
 
         # Method returns None on success
         assert result is None
@@ -110,7 +106,7 @@ class TestCreateCollectionStrict:
     def test_create_collection_strict_connection_failure_raises_error(self):
         """Test create_collection_strict raises DatabaseConnectionError on connection failure"""
         # Use unreachable host
-        connector = DatabaseConnector(host="192.0.2.1", port=6333, timeout=1)
+        connector = DatabaseConnector(host="localhost", port=1, timeout=0.1)
 
         with pytest.raises((DatabaseConnectionError, DatabaseTimeoutError)) as exc_info:
             connector.create_collection_strict("test_unreachable", vector_size=768)
@@ -151,7 +147,7 @@ class TestCollectionExistsStrict:
     def test_collection_exists_strict_connection_failure_raises_error(self):
         """Test collection_exists_strict raises DatabaseConnectionError on connection failure"""
         # Use unreachable host
-        connector = DatabaseConnector(host="192.0.2.1", port=6333, timeout=1)
+        connector = DatabaseConnector(host="localhost", port=1, timeout=0.1)
 
         with pytest.raises((DatabaseConnectionError, DatabaseTimeoutError)) as exc_info:
             connector.collection_exists_strict("test_collection")
@@ -195,7 +191,7 @@ class TestDeleteCollectionStrict:
     def test_delete_collection_strict_connection_failure_raises_error(self):
         """Test delete_collection_strict raises DatabaseConnectionError on connection failure"""
         # Use unreachable host
-        connector = DatabaseConnector(host="192.0.2.1", port=6333, timeout=1)
+        connector = DatabaseConnector(host="localhost", port=1, timeout=0.1)
 
         with pytest.raises((DatabaseConnectionError, DatabaseTimeoutError)) as exc_info:
             connector.delete_collection_strict("test_collection")
@@ -257,7 +253,7 @@ class TestListCollectionsStrict:
     def test_list_collections_strict_connection_failure_raises_error(self):
         """Test list_collections_strict raises DatabaseConnectionError on connection failure"""
         # Use unreachable host
-        connector = DatabaseConnector(host="192.0.2.1", port=6333, timeout=1)
+        connector = DatabaseConnector(host="localhost", port=1, timeout=0.1)
 
         with pytest.raises((DatabaseConnectionError, DatabaseTimeoutError)) as exc_info:
             connector.list_collections_strict()

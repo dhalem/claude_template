@@ -232,13 +232,26 @@ git show --name-only HEAD    # Confirm files actually committed
 ### 🚨 MANDATORY COMMIT MONITORING PROTOCOL
 **CRITICAL: NEVER assume a commit succeeded without verification**
 
+**COMMIT TIMEOUT CONFIGURATION (UPDATED 2025-01-24):**
+- **Full test suite runtime**: ~1m50s-1m58s (measured consistently)
+- **Git core.hookstimeout**: 300 seconds (5 minutes) - REQUIRED
+- **Bash timeout for commits**: Use `timeout 360 git commit` (6 minutes minimum)
+- **Pre-commit config timeout**: 900 seconds (15 minutes) for test suite
+
+**REQUIRED GIT CONFIGURATION:**
+```bash
+# Set git hooks timeout to 5 minutes (MANDATORY)
+git config core.hookstimeout 300
+```
+
 **REQUIRED ACTIONS for EVERY commit attempt:**
 
-1. **WATCH THE ENTIRE COMMIT PROCESS** - Do not move on until complete
-2. **READ ALL OUTPUT** - Understand what's happening, where it fails
-3. **IDENTIFY SPECIFIC FAILURE POINT** - Pre-commit hook? Which test? Why?
-4. **VERIFY COMPLETION** with `git log --oneline -1`
-5. **IF TIMEOUT/HANG**: Investigate the specific hanging component
+1. **USE PROPER TIMEOUT** - `timeout 360 git commit` minimum (6 minutes)
+2. **WATCH THE ENTIRE COMMIT PROCESS** - Do not move on until complete
+3. **READ ALL OUTPUT** - Understand what's happening, where it fails
+4. **IDENTIFY SPECIFIC FAILURE POINT** - Pre-commit hook? Which test? Why?
+5. **VERIFY COMPLETION** with `git log --oneline -1`
+6. **IF TIMEOUT/HANG**: Investigate the specific hanging component
 
 **COMMON HANGING POINTS:**
 - Full test suite in pre-commit (`./run_tests.sh`)
@@ -246,20 +259,22 @@ git show --name-only HEAD    # Confirm files actually committed
 - Long-running tests without proper timeout handling
 - Environment differences between manual and pre-commit execution
 
-**DEBUGGING HANGING COMMITS:**
+**COMMIT TIMEOUT TROUBLESHOOTING:**
 ```bash
+# Test suite timing analysis:
+time PRE_COMMIT=1 ./run_tests.sh  # Should take ~1m50s
+
 # Test the exact pre-commit command manually:
 PRE_COMMIT=1 timeout 600 ./run_tests.sh
 
 # If that hangs, isolate the hanging test:
 PRE_COMMIT=1 ./run_tests.sh 2>&1 | tee commit_debug.log
 
-# Check what the pre-commit hook is actually running:
-cat .pre-commit-config.yaml | grep -A5 "MANDATORY FULL TEST"
+# Check git timeout configuration:
+git config --get core.hookstimeout  # Should return 300
 
-# Debug specific test components:
-./run_tests.sh  # Run manually first
-pytest tests/test_mcp_integration.py -v  # Check MCP tests specifically
+# Proper commit with adequate timeout:
+timeout 360 git commit -m "your message"
 ```
 
 **NEVER proceed with additional changes until you understand why a commit failed or hung.**
