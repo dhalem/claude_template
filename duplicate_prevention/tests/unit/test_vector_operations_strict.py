@@ -284,6 +284,12 @@ class TestUpdateVectorPointsStrict:
         connector = DatabaseConnector(host="localhost", port=6333)
         collection_name = "test_vector_update_strict_success"
 
+        # Ensure clean slate - delete collection if it exists
+        try:
+            connector.delete_collection(collection_name)
+        except:
+            pass  # Collection might not exist
+
         # Create collection and insert initial point
         connector.create_collection(collection_name, vector_size=4)
 

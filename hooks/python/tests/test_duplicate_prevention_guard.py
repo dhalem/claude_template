@@ -18,8 +18,6 @@ import os
 import sys
 import unittest
 
-import pytest
-
 # Add project root to path for imports
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
 sys.path.insert(0, project_root)
@@ -67,12 +65,11 @@ class TestDuplicatePreventionGuard(unittest.TestCase):
         except:
             pass  # Ignore cleanup errors
 
-    @pytest.mark.skip(reason="Skip during development - guard implementation changed")
     def test_guard_metadata(self):
         """Test guard has proper name and description."""
         self.assertEqual(self.guard.name, "Duplicate Prevention")
         self.assertIn("similar code", self.guard.description.lower())
-        self.assertEqual(self.guard.get_default_action(), GuardAction.ALLOW)
+        self.assertEqual(self.guard.get_default_action(), GuardAction.BLOCK)
 
     def test_should_not_trigger_on_non_file_operations(self):
         """Guard should not trigger on non-file operations."""
@@ -100,7 +97,6 @@ class TestDuplicatePreventionGuard(unittest.TestCase):
         )
         self.assertFalse(self.guard.should_trigger(context))
 
-    @pytest.mark.skip(reason="Skip during development - guard implementation changed")
     def test_should_trigger_on_similar_python_function_real_integration(self):
         """Guard should trigger when creating similar Python functions.
 
@@ -223,7 +219,6 @@ def calculate_fibonacci(n):
         # Should not trigger because functions are completely different
         self.assertFalse(self.guard.should_trigger(context))
 
-    @pytest.mark.skip(reason="Skip during development - guard implementation changed")
     def test_get_message_shows_similar_files_real_data(self):
         """Guard message should show details of similar files found.
 
@@ -303,8 +298,8 @@ def point_distance(x1, y1, x2, y2):
 
         # Verify message contains information about similar files
         self.assertIn("similar", message.lower())
-        self.assertIn("euclidean_distance", message)
         self.assertIn("/app/utils/math.py", message)
+        self.assertIn("75%", message)  # Check similarity percentage is shown
 
     def test_handles_database_unavailable_gracefully(self):
         """Guard should handle database unavailability gracefully."""
