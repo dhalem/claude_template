@@ -26,3 +26,6 @@ types-PyYAML
 
 # Hook override system
 pyotp>=2.9.0
+
+# File watching for configuration management
+watchdog==4.0.0
