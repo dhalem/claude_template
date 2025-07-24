@@ -131,6 +131,14 @@ Multiple install scripts and careless .claude modifications have destroyed Claud
 - **Pattern matching** - Find similar implementations with wildcards
 - **Comprehensive MCP testing** - Automated test suite for MCP server verification
 
+### 🚫 Duplicate Prevention System
+- **AI-powered similarity detection** - Prevents creation of duplicate code using semantic embeddings
+- **Real-time code analysis** - Checks new code against existing codebase before creation
+- **Workspace-specific isolation** - Each project maintains its own similarity database
+- **Smart threshold detection** - 70%+ similarity triggers protective blocking
+- **Pre-commit integration** - Automatically prevents duplicate code from being committed
+- **Override capability** - TOTP-based override system for legitimate similar code
+
 ### ✅ Quality Assurance System
 - **15+ pre-commit hooks** - Automated quality and security checks
 - **Smart test runner** - Dependency-aware test execution
@@ -340,6 +348,175 @@ The template includes a secure override system for when hooks block legitimate o
 - **Parallel execution**: Automatic parallelization for speed
 - **Real integration focus**: Discourages over-mocking
 - **Coverage tracking**: HTML and terminal coverage reports
+
+## 🚫 Duplicate Prevention System Setup
+
+The duplicate prevention system uses AI-powered semantic similarity detection to prevent creation of duplicate code. It integrates with Claude Code to block creation of files that are too similar to existing code.
+
+### Prerequisites
+
+1. **Docker and Docker Compose** (for Qdrant vector database)
+   ```bash
+   # Check if Docker is installed
+   docker --version
+   docker-compose --version
+   ```
+
+2. **Python virtual environment activated**
+   ```bash
+   source venv/bin/activate
+   ```
+
+### Installation Instructions
+
+1. **Start the Qdrant vector database**:
+   ```bash
+   cd duplicate_prevention
+   docker-compose up -d
+
+   # Verify it's running
+   curl http://localhost:6333/health
+   ```
+
+2. **Install the duplicate prevention hook**:
+   ```bash
+   # This is already done by safe_install.sh, but can be run separately:
+   ./hooks/install-hooks-python-only.sh
+   ```
+
+3. **Initialize your workspace collection**:
+   ```bash
+   # The system automatically creates a workspace-specific collection
+   # Collection name format: {workspace_name}_duplicate_prevention
+   ```
+
+### Configuration
+
+The duplicate prevention system can be configured in `hooks/python/guards/duplicate_prevention_guard.py`:
+
+- **Similarity threshold**: Default 70% (0.70)
+- **Minimum file size**: Default 5 lines
+- **Supported languages**: Python, JavaScript, TypeScript, Java, C++, C, Go, Rust
+
+### How It Works
+
+1. **Real-time analysis**: When you create/edit code files, the guard:
+   - Generates semantic embeddings of your code
+   - Compares against all existing code in the workspace
+   - Blocks creation if similarity exceeds threshold
+
+2. **Workspace isolation**: Each project maintains its own vector database collection
+   - No cross-contamination between projects
+   - Automatic workspace detection
+   - Clean separation of concerns
+
+3. **Smart detection**: Uses advanced AI models to understand code semantics
+   - Detects similar logic even with different variable names
+   - Understands code structure and patterns
+   - Language-aware processing
+
+### Usage Example
+
+When the system detects duplicate code, you'll see:
+```
+🚨 DUPLICATE CODE BLOCKED: Similar code already exists!
+
+📍 DUPLICATE LOCATIONS FOUND:
+  1. 85% similar code in: /home/user/project/utils/math_helpers.py
+     Similarity score: 0.852
+
+❌ WHY THIS IS BLOCKED:
+  Creating duplicate code leads to maintenance issues, bugs, and inconsistency.
+
+✅ RECOMMENDED ACTIONS:
+  1. Edit the existing similar file to add your functionality
+  2. Extract common code into a shared utility function
+  3. Refactor both implementations to use shared components
+
+🔓 TO OVERRIDE THIS BLOCK:
+  If you believe this is genuinely different functionality:
+  1. Ask for an override code from the human operator
+  2. Re-run with: HOOK_OVERRIDE_CODE=<code> <your command>
+```
+
+### Testing the System
+
+```bash
+# Run duplicate prevention tests
+cd hooks/python
+pytest tests/test_duplicate_prevention_guard.py -v
+
+# Test with a sample file
+echo 'def calculate_distance(x1, y1, x2, y2):
+    return ((x2-x1)**2 + (y2-y1)**2)**0.5' > test_function.py
+
+# Try creating a similar function - should be blocked
+echo 'def compute_distance(a, b, c, d):
+    return ((c-a)**2 + (d-b)**2)**0.5' > similar_function.py
+```
+
+### Troubleshooting
+
+**Qdrant not running**:
+```bash
+cd duplicate_prevention
+docker-compose down
+docker-compose up -d
+docker-compose logs
+```
+
+**Collection issues**:
+```bash
+# Check collections
+curl http://localhost:6333/collections
+
+# Check specific collection
+curl http://localhost:6333/collections/{workspace_name}_duplicate_prevention
+```
+
+**Guard not triggering**:
+- Ensure hooks are installed: `ls ~/.claude/hooks/`
+- Check logs: `tail -f ~/.claude/logs/*`
+- Verify file size meets minimum (5 lines)
+- Ensure file extension is supported
+
+### Cross-Workspace Setup
+
+To enable duplicate prevention in other workspaces:
+
+1. **Copy the duplicate prevention directory**:
+   ```bash
+   cp -r /path/to/claude_template/duplicate_prevention /path/to/new/workspace/
+   ```
+
+2. **Start Qdrant in the new workspace**:
+   ```bash
+   cd /path/to/new/workspace/duplicate_prevention
+   docker-compose up -d
+   ```
+
+3. **Install hooks (if not already global)**:
+   ```bash
+   cd /path/to/new/workspace
+   ./safe_install.sh  # Or copy from claude_template
+   ```
+
+The system will automatically create a new collection for the workspace!
+
+### Quick Setup Prompt for Other Workspaces
+
+Copy and paste this prompt when working in a new workspace:
+
+```
+I want to enable the duplicate prevention system from claude_template in this workspace. Please:
+
+1. Copy the duplicate_prevention directory from claude_template to this workspace
+2. Start the Qdrant database using docker-compose
+3. Verify the setup is working
+4. The system should automatically create a workspace-specific collection
+
+The duplicate prevention guard is already installed globally via safe_install.sh, so it should work once Qdrant is running.
+```
 
 ## Updating the Template
 
