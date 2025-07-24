@@ -1,0 +1,31 @@
+# RULE #0: MANDATORY FIRST ACTION FOR EVERY REQUEST
+# 1. Read CLAUDE.md COMPLETELY before responding
+# 2. Setup Python venv: [ -d "venv" ] || ./setup-venv.sh && source venv/bin/activate
+# 3. Read INDEX.md files for relevant directories
+# 4. Search for rules related to the request
+# 5. Only proceed after confirming no violations
+# Failure to follow Rule #0 has caused real harm. Check BEFORE acting, not AFTER making mistakes.
+#
+# GUARDS ARE SAFETY EQUIPMENT - WHEN THEY FIRE, FIX THE PROBLEM THEY FOUND
+# NEVER weaken, disable, or bypass guards - they prevent real harm
+
+# MCP Server Dependencies
+mcp>=0.1.0
+
+# Database
+# sqlite3 is built-in to Python
+
+# AI Integration
+google-generativeai>=0.3.0
+
+# Testing
+pytest>=7.0.0
+pytest-asyncio>=0.21.0
+pytest-cov>=4.0.0
+
+# Type Checking
+mypy>=1.0.0
+types-requests
+
+# Utilities
+python-dotenv>=1.0.0
