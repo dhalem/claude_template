@@ -10,6 +10,6 @@
 # NEVER weaken, disable, or bypass guards - they prevent real harm
 
 """
-Unit tests for Test Validation MCP components.
-Tests individual MCP server components in isolation.
+Test Validation MCP Server package.
+Provides MCP (Model Context Protocol) server for test validation workflow.
 """

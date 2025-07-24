@@ -122,7 +122,12 @@ class DatabaseManager:
                         user_value_statement TEXT,
                         expiration_timestamp DATETIME,
                         metadata TEXT,
-                        validation_stages TEXT
+                        validation_stages TEXT,
+                        implementation_code TEXT,
+                        implementation_analysis TEXT,
+                        breaking_scenarios TEXT,
+                        breaking_analysis TEXT,
+                        approval_notes TEXT
                     )
                 ''')
 

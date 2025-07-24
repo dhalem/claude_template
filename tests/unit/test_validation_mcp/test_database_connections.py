@@ -98,8 +98,8 @@ class TestDatabaseConnectionManagement:
         with db_manager.get_db_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
-                INSERT INTO test_validations (test_fingerprint, test_name, file_path,
-                    validation_stage, status, validation_timestamp)
+                INSERT INTO test_validations (test_fingerprint, test_name, test_file_path,
+                    current_stage, status, validation_timestamp)
                 VALUES (?, ?, ?, ?, ?, datetime('now'))
             """, ('fp_test_1', 'test1', '/test1.py', 'design', 'PENDING'))
             conn.commit()
@@ -110,8 +110,8 @@ class TestDatabaseConnectionManagement:
                 cursor = conn.cursor()
                 # First insert - should work
                 cursor.execute("""
-                    INSERT INTO test_validations (test_fingerprint, test_name, file_path,
-                        validation_stage, status, validation_timestamp)
+                    INSERT INTO test_validations (test_fingerprint, test_name, test_file_path,
+                        current_stage, status, validation_timestamp)
                     VALUES (?, ?, ?, ?, ?, datetime('now'))
                 """, ('fp_test_2', 'test2', '/test2.py', 'design', 'PENDING'))
 
@@ -143,8 +143,8 @@ class TestDatabaseConnectionManagement:
                     cursor = conn.cursor()
                     # Each thread inserts its own record
                     cursor.execute("""
-                        INSERT INTO test_validations (test_fingerprint, test_name, file_path,
-                            validation_stage, status, validation_timestamp)
+                        INSERT INTO test_validations (test_fingerprint, test_name, test_file_path,
+                            current_stage, status, validation_timestamp)
                         VALUES (?, ?, ?, ?, ?, datetime('now'))
                     """, (f'fp_thread_{thread_id}', f'test_{thread_id}',
                           f'/test_{thread_id}.py', 'design', 'PENDING'))
@@ -239,8 +239,8 @@ class TestDatabaseConnectionManagement:
         lock_conn.execute("BEGIN EXCLUSIVE")
         lock_cursor = lock_conn.cursor()
         lock_cursor.execute("""
-            INSERT INTO test_validations (test_fingerprint, test_name, file_path,
-                validation_stage, status, validation_timestamp)
+            INSERT INTO test_validations (test_fingerprint, test_name, test_file_path,
+                current_stage, status, validation_timestamp)
             VALUES ('fp_lock', 'lock_test', '/lock.py', 'design', 'PENDING', datetime('now'))
         """)
         # Don't commit - hold the lock
@@ -251,8 +251,8 @@ class TestDatabaseConnectionManagement:
             with db_manager.get_db_connection(timeout=0.5) as conn:
                 cursor = conn.cursor()
                 cursor.execute("""
-                    INSERT INTO test_validations (test_fingerprint, test_name, file_path,
-                        validation_stage, status, validation_timestamp)
+                    INSERT INTO test_validations (test_fingerprint, test_name, test_file_path,
+                        current_stage, status, validation_timestamp)
                     VALUES ('fp_timeout', 'timeout_test', '/timeout.py', 'design', 'PENDING', datetime('now'))
                 """)
                 conn.commit()
@@ -275,8 +275,8 @@ class TestDatabaseConnectionManagement:
         with db_manager.get_db_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
-                INSERT INTO test_validations (test_fingerprint, test_name, file_path,
-                    validation_stage, status, validation_timestamp)
+                INSERT INTO test_validations (test_fingerprint, test_name, test_file_path,
+                    current_stage, status, validation_timestamp)
                 VALUES (?, ?, ?, ?, ?, datetime('now'))
             """, ('fp_dict_test', 'dict_test', '/dict.py', 'design', 'PENDING'))
             conn.commit()
@@ -303,8 +303,8 @@ class TestDatabaseConnectionManagement:
         with db_manager.get_db_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
-                INSERT INTO test_validations (test_fingerprint, test_name, file_path,
-                    validation_stage, status, validation_timestamp)
+                INSERT INTO test_validations (test_fingerprint, test_name, test_file_path,
+                    current_stage, status, validation_timestamp)
                 VALUES ('fp_base', 'base_test', '/base.py', 'design', 'PENDING', datetime('now'))
             """)
             conn.commit()
@@ -322,8 +322,8 @@ class TestDatabaseConnectionManagement:
 
                 # Insert new record
                 cursor.execute("""
-                    INSERT INTO test_validations (test_fingerprint, test_name, file_path,
-                        validation_stage, status, validation_timestamp)
+                    INSERT INTO test_validations (test_fingerprint, test_name, test_file_path,
+                        current_stage, status, validation_timestamp)
                     VALUES ('fp_trans', 'trans_test', '/trans.py', 'design', 'PENDING', datetime('now'))
                 """)
 
