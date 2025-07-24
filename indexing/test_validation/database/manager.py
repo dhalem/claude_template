@@ -16,6 +16,7 @@ Handles database creation, schema management, and connections.
 
 import logging
 import sqlite3
+import threading
 from contextlib import contextmanager
 
 # Configure logging
@@ -42,10 +43,17 @@ class DatabaseManager:
             db_path: Path to SQLite database file
         """
         self.db_path = db_path
+        self._active_connections = 0
+        self._max_connections = 10
+        self._lock = threading.Lock()  # Thread-safe connection counter
 
     @contextmanager
-    def get_db_connection(self):
+    def get_db_connection(self, timeout=None, row_factory=None):
         """Get a database connection with automatic resource management.
+
+        Args:
+            timeout: Optional timeout in seconds (converted to milliseconds for SQLite)
+            row_factory: Optional row factory ('dict' for dict-like rows)
 
         Yields:
             sqlite3.Connection: Database connection with foreign keys enabled
@@ -57,6 +65,19 @@ class DatabaseManager:
         try:
             conn = sqlite3.connect(self.db_path)
             conn.execute("PRAGMA foreign_keys = ON")
+
+            # Set timeout if specified
+            if timeout is not None:
+                # SQLite uses milliseconds for busy_timeout
+                timeout_ms = int(timeout * 1000)
+                conn.execute(f"PRAGMA busy_timeout = {timeout_ms}")
+
+            # Set row factory if specified
+            if row_factory == 'dict':
+                conn.row_factory = sqlite3.Row
+
+            with self._lock:
+                self._active_connections += 1
             yield conn
         except sqlite3.Error as e:
             logger.error(f"Database connection error: {e}")
@@ -64,6 +85,8 @@ class DatabaseManager:
         finally:
             if conn:
                 conn.close()
+            with self._lock:
+                self._active_connections -= 1
 
     def create_tables(self):
         """Create all required database tables with proper schema.
@@ -176,3 +199,55 @@ class DatabaseManager:
         conn = sqlite3.connect(self.db_path)
         conn.execute("PRAGMA foreign_keys = ON")
         return conn
+
+    @contextmanager
+    def get_transaction(self):
+        """Get a database connection with automatic transaction management.
+
+        This context manager automatically begins a transaction and either
+        commits on success or rolls back on any exception.
+
+        Yields:
+            sqlite3.Connection: Database connection in transaction
+
+        Raises:
+            sqlite3.Error: If database operations fail
+        """
+        conn = None
+        try:
+            conn = sqlite3.connect(self.db_path)
+            conn.execute("PRAGMA foreign_keys = ON")
+            # Begin transaction explicitly
+            conn.execute("BEGIN")
+            with self._lock:
+                self._active_connections += 1
+            yield conn
+            # Commit on successful completion
+            conn.commit()
+        except Exception as e:
+            # Catching Exception to ensure transaction rollback on any failure, regardless of error type
+            if conn:
+                conn.rollback()
+            logger.error(f"Transaction rolled back due to error: {e}")
+            raise
+        finally:
+            if conn:
+                conn.close()
+            with self._lock:
+                self._active_connections -= 1
+
+    def get_pool_stats(self) -> dict:
+        """Get connection pool statistics.
+
+        Returns:
+            dict: Dictionary containing pool statistics
+        """
+        with self._lock:
+            active = self._active_connections
+            max_conn = self._max_connections
+
+        return {
+            'active_connections': active,
+            'max_connections': max_conn,
+            'available_connections': max_conn - active
+        }
