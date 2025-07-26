@@ -38,7 +38,7 @@ class TestValidationWorkflow:
         import tempfile
 
         # Create temporary database file
-        tmp_file = tempfile.NamedTemporaryFile(suffix='.db', delete=False)
+        tmp_file = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
         self.db_path = tmp_file.name
         tmp_file.close()
 
@@ -52,16 +52,14 @@ class TestValidationWorkflow:
         self.db_manager = DatabaseManager(self.db_path)
         self.db_manager.create_tables()
         self.fingerprinter = TestFingerprinter(cache_enabled=True)
-        self.token_manager = ValidationTokenManager(
-            default_expiry_hours=self.config.get("token_expiry_hours")
-        )
+        self.token_manager = ValidationTokenManager(default_expiry_hours=self.config.get("token_expiry_hours"))
 
     def teardown_method(self):
         """Cleanup test environment after each test."""
         import os
 
         # Cleanup temporary database file
-        if hasattr(self, 'db_path') and os.path.exists(self.db_path):
+        if hasattr(self, "db_path") and os.path.exists(self.db_path):
             os.unlink(self.db_path)
 
     def test_complete_validation_lifecycle(self):
@@ -132,11 +130,14 @@ def raises(exception_type):
 
         with self.db_manager.get_db_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("""
+            cursor.execute(
+                """
                 INSERT INTO test_validations
-                (test_fingerprint, test_file_path, current_stage, created_at, metadata)
+                (test_fingerprint, file_path, validation_stage, created_at, metadata)
                 VALUES (?, ?, ?, ?, ?)
-            """, (fingerprint, test_file, "design", datetime.now().isoformat(), str(metadata)))
+            """,
+                (fingerprint, test_file, "design", datetime.now().isoformat(), str(metadata)),
+            )
             conn.commit()
 
         # Step 2: Design validation passes
@@ -146,18 +147,24 @@ def raises(exception_type):
         # Record design validation
         with self.db_manager.get_db_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("""
+            cursor.execute(
+                """
                 INSERT INTO validation_history
-                (test_fingerprint, stage, validation_result, validated_at, validator_id)
+                (test_fingerprint, stage, status, validated_at, validator_id)
                 VALUES (?, ?, ?, ?, ?)
-            """, (fingerprint, "design", "passed", datetime.now().isoformat(), "design_validator"))
+            """,
+                (fingerprint, "design", "passed", datetime.now().isoformat(), "design_validator"),
+            )
 
             # Move to implementation stage
-            cursor.execute("""
+            cursor.execute(
+                """
                 UPDATE test_validations
-                SET current_stage = ?, updated_at = ?
+                SET validation_stage = ?, updated_at = ?
                 WHERE test_fingerprint = ?
-            """, ("implementation", datetime.now().isoformat(), fingerprint))
+            """,
+                ("implementation", datetime.now().isoformat(), fingerprint),
+            )
             conn.commit()
 
         # Step 3: Implementation validation
@@ -167,18 +174,24 @@ def raises(exception_type):
         # Simulate implementation validation passing
         with self.db_manager.get_db_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("""
+            cursor.execute(
+                """
                 INSERT INTO validation_history
-                (test_fingerprint, stage, validation_result, validated_at, validator_id)
+                (test_fingerprint, stage, status, validated_at, validator_id)
                 VALUES (?, ?, ?, ?, ?)
-            """, (fingerprint, "implementation", "passed", datetime.now().isoformat(), "impl_validator"))
+            """,
+                (fingerprint, "implementation", "passed", datetime.now().isoformat(), "impl_validator"),
+            )
 
             # Move to breaking behavior stage
-            cursor.execute("""
+            cursor.execute(
+                """
                 UPDATE test_validations
-                SET current_stage = ?, updated_at = ?
+                SET validation_stage = ?, updated_at = ?
                 WHERE test_fingerprint = ?
-            """, ("breaking", datetime.now().isoformat(), fingerprint))
+            """,
+                ("breaking", datetime.now().isoformat(), fingerprint),
+            )
             conn.commit()
 
         # Step 4: Breaking behavior validation
@@ -188,18 +201,24 @@ def raises(exception_type):
         # Simulate breaking behavior validation passing
         with self.db_manager.get_db_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("""
+            cursor.execute(
+                """
                 INSERT INTO validation_history
-                (test_fingerprint, stage, validation_result, validated_at, validator_id)
+                (test_fingerprint, stage, status, validated_at, validator_id)
                 VALUES (?, ?, ?, ?, ?)
-            """, (fingerprint, "breaking", "passed", datetime.now().isoformat(), "breaking_validator"))
+            """,
+                (fingerprint, "breaking", "passed", datetime.now().isoformat(), "breaking_validator"),
+            )
 
             # Move to approval stage
-            cursor.execute("""
+            cursor.execute(
+                """
                 UPDATE test_validations
-                SET current_stage = ?, updated_at = ?
+                SET validation_stage = ?, updated_at = ?
                 WHERE test_fingerprint = ?
-            """, ("approval", datetime.now().isoformat(), fingerprint))
+            """,
+                ("approval", datetime.now().isoformat(), fingerprint),
+            )
             conn.commit()
 
         # Step 5: Final approval
@@ -209,23 +228,41 @@ def raises(exception_type):
         # Store approval token
         with self.db_manager.get_db_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("""
-                INSERT INTO approval_tokens (test_fingerprint, approval_token, approved_by, approved_at)
-                VALUES (?, ?, ?, ?)
-            """, (fingerprint, approval_token, "final_approver", datetime.now().isoformat()))
+            cursor.execute(
+                """
+                INSERT INTO approval_tokens (test_fingerprint, token, approved_by, approved_at, stage, issued_timestamp, expires_timestamp, status)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+                (
+                    fingerprint,
+                    approval_token,
+                    "final_approver",
+                    datetime.now().isoformat(),
+                    "approval",
+                    datetime.now().isoformat(),
+                    (datetime.now() + timedelta(days=7)).isoformat(),
+                    "VALID",
+                ),
+            )
 
             # Mark validation as completed
-            cursor.execute("""
+            cursor.execute(
+                """
                 INSERT INTO validation_history
-                (test_fingerprint, stage, validation_result, validated_at, validator_id)
+                (test_fingerprint, stage, status, validated_at, validator_id)
                 VALUES (?, ?, ?, ?, ?)
-            """, (fingerprint, "approval", "approved", datetime.now().isoformat(), "final_approver"))
+            """,
+                (fingerprint, "approval", "approved", datetime.now().isoformat(), "final_approver"),
+            )
 
-            cursor.execute("""
+            cursor.execute(
+                """
                 UPDATE test_validations
-                SET current_stage = ?, updated_at = ?
+                SET validation_stage = ?, updated_at = ?
                 WHERE test_fingerprint = ?
-            """, ("completed", datetime.now().isoformat(), fingerprint))
+            """,
+                ("completed", datetime.now().isoformat(), fingerprint),
+            )
             conn.commit()
 
         # Verify complete workflow
@@ -233,26 +270,32 @@ def raises(exception_type):
             cursor = conn.cursor()
 
             # Check final state
-            cursor.execute("""
-                SELECT current_stage, test_file_path FROM test_validations
+            cursor.execute(
+                """
+                SELECT validation_stage, file_path FROM test_validations
                 WHERE test_fingerprint = ?
-            """, (fingerprint,))
+            """,
+                (fingerprint,),
+            )
             result = cursor.fetchone()
             assert result[0] == "completed"
             assert result[1] == test_file
 
             # Verify all validation history
-            cursor.execute("""
-                SELECT stage, validation_result FROM validation_history
+            cursor.execute(
+                """
+                SELECT stage, status FROM validation_history
                 WHERE test_fingerprint = ? ORDER BY validated_at
-            """, (fingerprint,))
+            """,
+                (fingerprint,),
+            )
             history = cursor.fetchall()
 
             expected_history = [
                 ("design", "passed"),
                 ("implementation", "passed"),
                 ("breaking", "passed"),
-                ("approval", "approved")
+                ("approval", "approved"),
             ]
 
             assert len(history) == 4
@@ -269,11 +312,14 @@ def raises(exception_type):
         # Store initial validation record
         with self.db_manager.get_db_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("""
+            cursor.execute(
+                """
                 INSERT INTO test_validations
-                (test_fingerprint, test_file_path, current_stage, created_at)
+                (test_fingerprint, file_path, validation_stage, created_at)
                 VALUES (?, ?, ?, ?)
-            """, (fingerprint, test_file, "design", datetime.now().isoformat()))
+            """,
+                (fingerprint, test_file, "design", datetime.now().isoformat()),
+            )
             conn.commit()
 
         # Simulate multiple validation failures
@@ -286,36 +332,48 @@ def raises(exception_type):
             # Record failure
             with self.db_manager.get_db_connection() as conn:
                 cursor = conn.cursor()
-                cursor.execute("""
+                cursor.execute(
+                    """
                     INSERT INTO validation_history
-                    (test_fingerprint, stage, validation_result, validated_at, validator_id, attempt_number)
+                    (test_fingerprint, stage, status, validated_at, validator_id, attempt_number)
                     VALUES (?, ?, ?, ?, ?, ?)
-                """, (fingerprint, "design", "failed", datetime.now().isoformat(), f"validator_{attempt}", attempt + 1))
+                """,
+                    (fingerprint, "design", "failed", datetime.now().isoformat(), f"validator_{attempt}", attempt + 1),
+                )
                 conn.commit()
 
         # After max attempts, validation should be marked as failed
         with self.db_manager.get_db_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("""
+            cursor.execute(
+                """
                 UPDATE test_validations
-                SET current_stage = ?, updated_at = ?
+                SET validation_stage = ?, updated_at = ?
                 WHERE test_fingerprint = ?
-            """, ("failed", datetime.now().isoformat(), fingerprint))
+            """,
+                ("failed", datetime.now().isoformat(), fingerprint),
+            )
             conn.commit()
 
         # Verify failure state
         with self.db_manager.get_db_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("""
-                SELECT current_stage FROM test_validations WHERE test_fingerprint = ?
-            """, (fingerprint,))
+            cursor.execute(
+                """
+                SELECT validation_stage FROM test_validations WHERE test_fingerprint = ?
+            """,
+                (fingerprint,),
+            )
             assert cursor.fetchone()[0] == "failed"
 
             # Verify attempt count
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT COUNT(*) FROM validation_history
                 WHERE test_fingerprint = ? AND stage = 'design'
-            """, (fingerprint,))
+            """,
+                (fingerprint,),
+            )
             assert cursor.fetchone()[0] == max_attempts
 
     def test_concurrent_validation_workflows(self):
@@ -327,7 +385,7 @@ def raises(exception_type):
             ("test_users.py", "def test_user_crud(): pass"),
             ("test_products.py", "def test_product_management(): pass"),
             ("test_orders.py", "def test_order_processing(): pass"),
-            ("test_payments.py", "def test_payment_flow(): pass")
+            ("test_payments.py", "def test_payment_flow(): pass"),
         ]
 
         results = {}
@@ -345,11 +403,14 @@ def raises(exception_type):
                 # Store initial validation
                 with self.db_manager.get_db_connection() as conn:
                     cursor = conn.cursor()
-                    cursor.execute("""
+                    cursor.execute(
+                        """
                         INSERT INTO test_validations
-                        (test_fingerprint, test_file_path, current_stage, created_at)
+                        (test_fingerprint, file_path, validation_stage, created_at)
                         VALUES (?, ?, ?, ?)
-                    """, (fingerprint, test_file, "design", datetime.now().isoformat()))
+                    """,
+                        (fingerprint, test_file, "design", datetime.now().isoformat()),
+                    )
                     conn.commit()
 
                 # Process through all stages
@@ -365,26 +426,28 @@ def raises(exception_type):
                     # Record validation
                     with self.db_manager.get_db_connection() as conn:
                         cursor = conn.cursor()
-                        cursor.execute("""
+                        cursor.execute(
+                            """
                             INSERT INTO validation_history
-                            (test_fingerprint, stage, validation_result, validated_at, validator_id)
+                            (test_fingerprint, stage, status, validated_at, validator_id)
                             VALUES (?, ?, ?, ?, ?)
-                        """, (fingerprint, stage, "passed", datetime.now().isoformat(), f"thread_{thread_id}"))
+                        """,
+                            (fingerprint, stage, "passed", datetime.now().isoformat(), f"thread_{thread_id}"),
+                        )
 
                         # Update to next stage or completion
                         next_stage = stages[i + 1] if i < len(stages) - 1 else "completed"
-                        cursor.execute("""
+                        cursor.execute(
+                            """
                             UPDATE test_validations
-                            SET current_stage = ?, updated_at = ?
+                            SET validation_stage = ?, updated_at = ?
                             WHERE test_fingerprint = ?
-                        """, (next_stage, datetime.now().isoformat(), fingerprint))
+                        """,
+                            (next_stage, datetime.now().isoformat(), fingerprint),
+                        )
                         conn.commit()
 
-                results[thread_id] = {
-                    "test_file": test_file,
-                    "fingerprint": fingerprint,
-                    "status": "completed"
-                }
+                results[thread_id] = {"test_file": test_file, "fingerprint": fingerprint, "status": "completed"}
 
             except Exception as e:
                 errors.append(f"Thread {thread_id}: {str(e)}")
@@ -392,10 +455,7 @@ def raises(exception_type):
         # Start all workflows concurrently
         threads = []
         for i, (test_file, test_content) in enumerate(test_files):
-            thread = threading.Thread(
-                target=workflow_thread,
-                args=(test_file, test_content, i)
-            )
+            thread = threading.Thread(target=workflow_thread, args=(test_file, test_content, i))
             threads.append(thread)
             thread.start()
 
@@ -412,9 +472,11 @@ def raises(exception_type):
             cursor = conn.cursor()
 
             # All validations should be completed
-            cursor.execute("""
-                SELECT COUNT(*) FROM test_validations WHERE current_stage = 'completed'
-            """, )
+            cursor.execute(
+                """
+                SELECT COUNT(*) FROM test_validations WHERE validation_stage = 'completed'
+            """,
+            )
             completed_count = cursor.fetchone()[0]
             assert completed_count == len(test_files)
 
@@ -432,11 +494,14 @@ def raises(exception_type):
         # Create database record
         with self.db_manager.get_db_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("""
+            cursor.execute(
+                """
                 INSERT INTO test_validations
-                (test_fingerprint, test_file_path, current_stage, created_at)
+                (test_fingerprint, file_path, validation_stage, created_at)
                 VALUES (?, ?, ?, ?)
-            """, (fingerprint, test_file, "design", datetime.now().isoformat()))
+            """,
+                (fingerprint, test_file, "design", datetime.now().isoformat()),
+            )
             conn.commit()
 
         tokens = {}
@@ -487,9 +552,7 @@ def raises(exception_type):
         custom_config.set("max_validation_attempts", 2)  # Fewer attempts
 
         # Create components with custom config
-        token_manager = ValidationTokenManager(
-            default_expiry_hours=custom_config.get("token_expiry_hours")
-        )
+        token_manager = ValidationTokenManager(default_expiry_hours=custom_config.get("token_expiry_hours"))
 
         test_content = "def test_config_driven(): pass"
         test_file = "test_config.py"
@@ -498,12 +561,20 @@ def raises(exception_type):
         # Store with custom stages
         with self.db_manager.get_db_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("""
+            cursor.execute(
+                """
                 INSERT INTO test_validations
-                (test_fingerprint, test_file_path, current_stage, created_at, validation_stages)
+                (test_fingerprint, file_path, validation_stage, created_at, validation_stages)
                 VALUES (?, ?, ?, ?, ?)
-            """, (fingerprint, test_file, "design", datetime.now().isoformat(),
-                  json.dumps(custom_config.get("validation_stages"))))
+            """,
+                (
+                    fingerprint,
+                    test_file,
+                    "design",
+                    datetime.now().isoformat(),
+                    json.dumps(custom_config.get("validation_stages")),
+                ),
+            )
             conn.commit()
 
         # Test workflow with custom stages
@@ -522,19 +593,25 @@ def raises(exception_type):
 
             with self.db_manager.get_db_connection() as conn:
                 cursor = conn.cursor()
-                cursor.execute("""
+                cursor.execute(
+                    """
                     INSERT INTO validation_history
-                    (test_fingerprint, stage, validation_result, validated_at, validator_id)
+                    (test_fingerprint, stage, status, validated_at, validator_id)
                     VALUES (?, ?, ?, ?, ?)
-                """, (fingerprint, stage, "passed", datetime.now().isoformat(), "config_validator"))
+                """,
+                    (fingerprint, stage, "passed", datetime.now().isoformat(), "config_validator"),
+                )
                 conn.commit()
 
         # Verify only configured stages were used
         with self.db_manager.get_db_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT DISTINCT stage FROM validation_history WHERE test_fingerprint = ?
-            """, (fingerprint,))
+            """,
+                (fingerprint,),
+            )
             used_stages = [row[0] for row in cursor.fetchall()]
 
             assert set(used_stages) == set(stages)
@@ -545,48 +622,42 @@ def raises(exception_type):
         # Test with different types of tests requiring different validation
         test_scenarios = [
             {
-                "content": '''
+                "content": """
 @pytest.mark.integration
 def test_database_integration():
     with database_connection() as conn:
         assert conn.is_connected()
-''',
+""",
                 "file": "test_db_integration.py",
-                "expected_requirements": ["design", "implementation", "breaking", "approval"]
+                "expected_requirements": ["design", "implementation", "breaking", "approval"],
             },
             {
-                "content": '''
+                "content": """
 @pytest.mark.unit
 def test_simple_function():
     result = add(2, 3)
     assert result == 5
-''',
+""",
                 "file": "test_unit_simple.py",
-                "expected_requirements": ["design", "implementation"]
+                "expected_requirements": ["design", "implementation"],
             },
             {
-                "content": '''
+                "content": """
 @pytest.mark.performance
 def test_performance_benchmark():
     start_time = time.time()
     process_large_dataset()
     duration = time.time() - start_time
     assert duration < 5.0
-''',
+""",
                 "file": "test_performance.py",
-                "expected_requirements": ["design", "implementation", "breaking", "approval"]
-            }
+                "expected_requirements": ["design", "implementation", "breaking", "approval"],
+            },
         ]
 
         for scenario in test_scenarios:
-            fingerprint = self.fingerprinter.generate_fingerprint(
-                scenario["content"],
-                scenario["file"]
-            )
-            metadata = self.fingerprinter.extract_metadata(
-                scenario["content"],
-                scenario["file"]
-            )
+            fingerprint = self.fingerprinter.generate_fingerprint(scenario["content"], scenario["file"])
+            metadata = self.fingerprinter.extract_metadata(scenario["content"], scenario["file"])
 
             # Determine validation requirements based on metadata
             requirements = self._determine_validation_requirements(metadata)
@@ -594,13 +665,22 @@ def test_performance_benchmark():
             # Store with requirements
             with self.db_manager.get_db_connection() as conn:
                 cursor = conn.cursor()
-                cursor.execute("""
+                cursor.execute(
+                    """
                     INSERT INTO test_validations
-                    (test_fingerprint, test_file_path, current_stage, created_at,
+                    (test_fingerprint, file_path, validation_stage, created_at,
                      metadata, validation_stages)
                     VALUES (?, ?, ?, ?, ?, ?)
-                """, (fingerprint, scenario["file"], "design", datetime.now().isoformat(),
-                      str(metadata), json.dumps(requirements)))
+                """,
+                    (
+                        fingerprint,
+                        scenario["file"],
+                        "design",
+                        datetime.now().isoformat(),
+                        str(metadata),
+                        json.dumps(requirements),
+                    ),
+                )
                 conn.commit()
 
             # Verify requirements match expectations

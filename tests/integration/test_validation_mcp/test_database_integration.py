@@ -38,7 +38,7 @@ class TestDatabaseUtilityIntegration:
     def test_config_driven_database_setup(self):
         """Test that database manager can use configuration from ValidationConfig."""
         # Create temporary database file
-        with tempfile.NamedTemporaryFile(suffix='.db', delete=False) as tmp_file:
+        with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp_file:
             db_path = tmp_file.name
 
         try:
@@ -70,7 +70,7 @@ class TestDatabaseUtilityIntegration:
     def test_fingerprinting_with_database_storage(self):
         """Test storing and retrieving fingerprints through database."""
         # Create temporary database file
-        with tempfile.NamedTemporaryFile(suffix='.db', delete=False) as tmp_file:
+        with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp_file:
             db_path = tmp_file.name
 
         try:
@@ -93,19 +93,25 @@ def test_another():
             # Store fingerprint in database
             with db_manager.get_db_connection() as conn:
                 cursor = conn.cursor()
-                cursor.execute("""
-                    INSERT INTO test_validations (test_fingerprint, test_file_path, current_stage)
+                cursor.execute(
+                    """
+                    INSERT INTO test_validations (test_fingerprint, file_path, validation_stage)
                     VALUES (?, ?, ?)
-                """, (fingerprint, filename, "design"))
+                """,
+                    (fingerprint, filename, "design"),
+                )
                 conn.commit()
 
             # Retrieve and verify fingerprint
             with db_manager.get_db_connection() as conn:
                 cursor = conn.cursor()
-                cursor.execute("""
-                    SELECT test_fingerprint, test_file_path FROM test_validations
-                    WHERE test_file_path = ?
-                """, (filename,))
+                cursor.execute(
+                    """
+                    SELECT test_fingerprint, file_path FROM test_validations
+                    WHERE file_path = ?
+                """,
+                    (filename,),
+                )
                 result = cursor.fetchone()
 
                 assert result is not None, "Fingerprint not found in database"
@@ -121,15 +127,12 @@ def test_another():
     def test_token_persistence_integration(self):
         """Test that tokens can be persisted through database and validated."""
         # Setup database and token manager with persistence
-        with tempfile.NamedTemporaryFile(suffix='.db', delete=False) as tmp_file:
+        with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp_file:
             db_path = tmp_file.name
 
         try:
             # Create token manager with persistent storage
-            token_manager = ValidationTokenManager(
-                storage_path=db_path,
-                secret_key="test_secret_key"
-            )
+            token_manager = ValidationTokenManager(storage_path=db_path, secret_key="test_secret_key")
 
             # Generate and persist token
             fingerprint = "test_fingerprint_123"
@@ -137,10 +140,7 @@ def test_another():
             token = token_manager.generate_token(fingerprint, stage)
 
             # Create new token manager instance (simulates restart)
-            token_manager2 = ValidationTokenManager(
-                storage_path=db_path,
-                secret_key="test_secret_key"
-            )
+            token_manager2 = ValidationTokenManager(storage_path=db_path, secret_key="test_secret_key")
 
             # Verify token can be validated by new instance
             is_valid = token_manager2.validate_token(token, fingerprint, stage)
@@ -159,7 +159,7 @@ def test_another():
     def test_cross_component_workflow(self):
         """Test complete workflow using all components together."""
         # Create temporary database file
-        with tempfile.NamedTemporaryFile(suffix='.db', delete=False) as tmp_file:
+        with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp_file:
             db_path = tmp_file.name
 
         try:
@@ -191,11 +191,14 @@ def test_user_permissions():
             # Step 2: Store test validation record in database
             with db_manager.get_db_connection() as conn:
                 cursor = conn.cursor()
-                cursor.execute("""
+                cursor.execute(
+                    """
                     INSERT INTO test_validations
-                    (test_fingerprint, test_file_path, current_stage, created_at)
+                    (test_fingerprint, file_path, validation_stage, validation_timestamp)
                     VALUES (?, ?, ?, ?)
-                """, (fingerprint, test_file, "design", datetime.now().isoformat()))
+                """,
+                    (fingerprint, test_file, "design", datetime.now().isoformat()),
+                )
                 conn.commit()
 
             # Step 3: Generate validation token for implementation stage
@@ -208,27 +211,44 @@ def test_user_permissions():
             # Step 5: Update database with validation progress
             with db_manager.get_db_connection() as conn:
                 cursor = conn.cursor()
-                cursor.execute("""
+                cursor.execute(
+                    """
                     UPDATE test_validations
-                    SET current_stage = ?, updated_at = ?
+                    SET validation_stage = ?, validation_timestamp = ?
                     WHERE test_fingerprint = ?
-                """, ("implementation", datetime.now().isoformat(), fingerprint))
+                """,
+                    ("implementation", datetime.now().isoformat(), fingerprint),
+                )
 
                 # Record validation history
-                cursor.execute("""
+                cursor.execute(
+                    """
                     INSERT INTO validation_history
-                    (test_fingerprint, stage, validation_result, validated_at)
-                    VALUES (?, ?, ?, ?)
-                """, (fingerprint, "design", "passed", datetime.now().isoformat()))
+                    (test_fingerprint, stage, attempt_number, status, feedback, validated_at, timestamp)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                """,
+                    (
+                        fingerprint,
+                        "design",
+                        1,
+                        "APPROVED",
+                        "Test passed validation",
+                        datetime.now().isoformat(),
+                        datetime.now().isoformat(),
+                    ),
+                )
                 conn.commit()
 
             # Step 6: Verify workflow state in database
             with db_manager.get_db_connection() as conn:
                 cursor = conn.cursor()
-                cursor.execute("""
-                    SELECT current_stage, test_file_path FROM test_validations
+                cursor.execute(
+                    """
+                    SELECT validation_stage, file_path FROM test_validations
                     WHERE test_fingerprint = ?
-                """, (fingerprint,))
+                """,
+                    (fingerprint,),
+                )
                 result = cursor.fetchone()
 
                 assert result is not None
@@ -244,7 +264,7 @@ def test_user_permissions():
     def test_concurrent_database_access(self):
         """Test that multiple components can safely access database concurrently."""
         # Create temporary database file
-        with tempfile.NamedTemporaryFile(suffix='.db', delete=False) as tmp_file:
+        with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp_file:
             db_path = tmp_file.name
 
         try:
@@ -267,22 +287,21 @@ def test_user_permissions():
                     # Store in database
                     with db_manager.get_db_connection() as conn:
                         cursor = conn.cursor()
-                        cursor.execute("""
+                        cursor.execute(
+                            """
                             INSERT INTO test_validations
-                            (test_fingerprint, test_file_path, current_stage)
+                            (test_fingerprint, file_path, validation_stage)
                             VALUES (?, ?, ?)
-                        """, (fingerprint, filename, "design"))
+                        """,
+                            (fingerprint, filename, "design"),
+                        )
                         conn.commit()
 
                     # Generate and validate token
                     token = token_manager.generate_token(fingerprint, "design")
                     is_valid = token_manager.validate_token(token, fingerprint, "design")
 
-                    results.append({
-                        "worker_id": worker_id,
-                        "fingerprint": fingerprint,
-                        "token_valid": is_valid
-                    })
+                    results.append({"worker_id": worker_id, "fingerprint": fingerprint, "token_valid": is_valid})
 
                 except Exception as e:
                     errors.append(f"Worker {worker_id}: {str(e)}")
@@ -317,7 +336,7 @@ def test_user_permissions():
     def test_database_transaction_with_utilities(self):
         """Test that utilities work correctly within database transactions."""
         # Create temporary database file
-        with tempfile.NamedTemporaryFile(suffix='.db', delete=False) as tmp_file:
+        with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp_file:
             db_path = tmp_file.name
 
         try:
@@ -335,21 +354,35 @@ def test_user_permissions():
                 cursor = conn.cursor()
 
                 # Insert test validation
-                cursor.execute("""
+                cursor.execute(
+                    """
                     INSERT INTO test_validations
-                    (test_fingerprint, test_file_path, current_stage)
+                    (test_fingerprint, file_path, validation_stage)
                     VALUES (?, ?, ?)
-                """, (fingerprint, filename, "design"))
+                """,
+                    (fingerprint, filename, "design"),
+                )
 
                 # Generate token (this should work within transaction)
                 token = token_manager.generate_token(fingerprint, "design")
 
                 # Insert validation history
-                cursor.execute("""
+                cursor.execute(
+                    """
                     INSERT INTO validation_history
-                    (test_fingerprint, stage, validation_result, validated_at)
-                    VALUES (?, ?, ?, ?)
-                """, (fingerprint, "design", "passed", datetime.now().isoformat()))
+                    (test_fingerprint, stage, attempt_number, status, feedback, validated_at, timestamp)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                """,
+                    (
+                        fingerprint,
+                        "design",
+                        1,
+                        "APPROVED",
+                        "Test passed validation",
+                        datetime.now().isoformat(),
+                        datetime.now().isoformat(),
+                    ),
+                )
 
             # Verify transaction was committed
             with db_manager.get_db_connection() as conn:
@@ -397,7 +430,7 @@ def test_user_permissions():
         config.set("rate_limit_per_minute", 10)
 
         # Create database manager with config-driven path
-        with tempfile.NamedTemporaryFile(suffix='.db', delete=False) as tmp_file:
+        with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp_file:
             db_path = tmp_file.name
 
         try:
@@ -408,7 +441,7 @@ def test_user_permissions():
             token_manager = ValidationTokenManager(
                 default_expiry_hours=config.get("token_expiry_hours"),
                 rate_limit_per_minute=config.get("rate_limit_per_minute"),
-                storage_path=db_path
+                storage_path=db_path,
             )
 
             # Reset rate limiter to ensure clean test state
@@ -416,6 +449,7 @@ def test_user_permissions():
 
             # Test that configuration affects token behavior (use unique user for this test)
             import time
+
             test_user = f"config_test_user_{int(time.time())}"
             fingerprint = "config_test"
             token = token_manager.generate_token(fingerprint, "design", user_id=test_user)
@@ -445,7 +479,7 @@ def test_user_permissions():
     def test_metadata_extraction_with_database_storage(self):
         """Test fingerprinting metadata extraction and database storage."""
         # Create temporary database file
-        with tempfile.NamedTemporaryFile(suffix='.db', delete=False) as tmp_file:
+        with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp_file:
             db_path = tmp_file.name
 
         try:
@@ -496,22 +530,30 @@ class User:
             # Store in database with metadata
             with db_manager.get_db_connection() as conn:
                 cursor = conn.cursor()
-                cursor.execute("""
+                cursor.execute(
+                    """
                     INSERT INTO test_validations
-                    (test_fingerprint, test_file_path, current_stage, metadata)
+                    (test_fingerprint, file_path, validation_stage, gemini_analysis)
                     VALUES (?, ?, ?, ?)
-                """, (fingerprint, filename, "design", str(metadata)))
+                """,
+                    (fingerprint, filename, "design", str(metadata)),
+                )
                 conn.commit()
 
             # Retrieve and verify metadata
             with db_manager.get_db_connection() as conn:
                 cursor = conn.cursor()
-                cursor.execute("""
-                    SELECT metadata FROM test_validations WHERE test_fingerprint = ?
-                """, (fingerprint,))
-                stored_metadata = cursor.fetchone()[0]
+                cursor.execute(
+                    """
+                    SELECT gemini_analysis FROM test_validations WHERE test_fingerprint = ?
+                """,
+                    (fingerprint,),
+                )
+                result = cursor.fetchone()
+                stored_metadata = result[0] if result else None
 
                 # Verify metadata contains expected information
+                assert stored_metadata is not None, "No metadata stored"
                 assert "pytest.mark.slow" in stored_metadata
                 assert "TestUserManagement" in stored_metadata
                 assert "test_complex_scenario" in stored_metadata

@@ -8,14 +8,15 @@
 # GUARDS ARE SAFETY EQUIPMENT - WHEN THEY FIRE, FIX THE PROBLEM THEY FOUND
 # NEVER weaken, disable, or bypass guards - they prevent real harm
 
-"""Gemini client for code review MCP server using official SDK.
+"""Gemini client for code analysis MCP server using official SDK.
 
-Refactored to use the google-generativeai SDK instead of requests.
+Enhanced to support multiple analysis types with centralized usage tracking
+and task-aware communication for better cost management and monitoring.
 """
 
 import logging
 import os
-from typing import Dict
+from typing import Dict, Optional
 
 import google.generativeai as genai
 
@@ -23,24 +24,34 @@ logger = logging.getLogger(__name__)
 
 
 class GeminiClient:
-    """Google Gemini API client for code review."""
+    """Google Gemini API client for code analysis with task-aware tracking."""
 
     # Default pricing per 1K tokens (as of January 2025)
     # WARNING: These prices may become outdated - check Google's current pricing
     DEFAULT_PRICING = {
         "flash": 0.000125,  # $0.125 per 1M tokens
-        "pro": 0.0025,      # $2.50 per 1M tokens
+        "pro": 0.0025,  # $2.50 per 1M tokens
     }
 
-    def __init__(self, model: str = "gemini-1.5-flash", custom_pricing: dict = None):
-        """Initialize the Gemini client.
+    def __init__(self, model: str = "gemini-1.5-flash", usage_tracker=None, custom_pricing: dict = None):
+        """Initialize the Gemini client with task-aware tracking.
 
         Args:
             model: The Gemini model to use (default: gemini-1.5-flash)
+            usage_tracker: Optional centralized usage tracker for multi-tool monitoring
             custom_pricing: Custom pricing dict to override defaults (for updated pricing)
         """
         self.model_name = model
         self.pricing = custom_pricing or self.DEFAULT_PRICING.copy()
+
+        # Use provided tracker or create local tracking
+        self.usage_tracker = usage_tracker
+
+        # Local tracking for backward compatibility when no UsageTracker provided
+        self.total_tokens = 0
+        self.input_tokens = 0
+        self.output_tokens = 0
+        self.call_count = 0
 
         # Get API key
         api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
@@ -53,20 +64,15 @@ class GeminiClient:
         # Initialize the model
         self.model = genai.GenerativeModel(model)
 
-        # Track usage
-        self.total_tokens = 0
-        self.input_tokens = 0
-        self.output_tokens = 0
-        self.call_count = 0
-
-    def review_code(self, content: str) -> str:
-        """Send code content to Gemini for review.
+    def analyze_code(self, content: str, task_type: str = "review") -> str:
+        """Send code content to Gemini for analysis.
 
         Args:
-            content: The code content to review
+            content: The code content to analyze
+            task_type: Type of analysis task (e.g., 'review', 'bug_finding')
 
         Returns:
-            Review text from Gemini
+            Analysis text from Gemini
         """
         try:
             # Configure generation parameters
@@ -79,14 +85,13 @@ class GeminiClient:
 
             logger.debug(f"Sending request to Gemini API ({self.model_name}) with prompt length: {len(content)}")
 
-            # Generate content using the SDK
+            # Generate content using the SDK with timeout
             response = self.model.generate_content(
-                content,
-                generation_config=generation_config
+                content, generation_config=generation_config, request_options={"timeout": 120}  # 2 minute timeout
             )
 
             # Update usage tracking
-            self._update_usage(response)
+            self._update_usage(response, task_type)
 
             # Extract text from response
             review_text = self._extract_text_from_response(response)
@@ -96,6 +101,17 @@ class GeminiClient:
         except Exception as e:
             logger.error(f"Error calling Gemini API: {e}")
             raise
+
+    def review_code(self, content: str) -> str:
+        """Send code content to Gemini for review (backward compatibility).
+
+        Args:
+            content: The code content to review
+
+        Returns:
+            Review text from Gemini
+        """
+        return self.analyze_code(content, task_type="review")
 
     def _extract_text_from_response(self, response: genai.types.GenerateContentResponse) -> str:
         """Extract text content from Gemini API SDK response.
@@ -118,30 +134,41 @@ class GeminiClient:
                 logger.error(f"Candidates: {response.candidates}")
             raise ValueError("No text content in Gemini response, it may have been blocked.") from e
 
-    def _update_usage(self, response: genai.types.GenerateContentResponse) -> None:
+    def _update_usage(self, response: genai.types.GenerateContentResponse, task_type: str = "review") -> None:
         """Update token usage statistics from response.
 
         Args:
             response: The SDK response object
+            task_type: Type of analysis task for centralized tracking
         """
         self.call_count += 1
 
         # The SDK provides usage metadata
-        if hasattr(response, 'usage_metadata') and response.usage_metadata:
+        if hasattr(response, "usage_metadata") and response.usage_metadata:
             usage = response.usage_metadata
 
             # Extract token counts
-            prompt_tokens = getattr(usage, 'prompt_token_count', 0)
-            completion_tokens = getattr(usage, 'candidates_token_count', 0)
-            total_tokens = getattr(usage, 'total_token_count', 0)
+            prompt_tokens = getattr(usage, "prompt_token_count", 0)
+            completion_tokens = getattr(usage, "candidates_token_count", 0)
+            total_tokens = getattr(usage, "total_token_count", 0)
 
-            # Update running totals
+            # Update local tracking for backward compatibility
             self.input_tokens += prompt_tokens
             self.output_tokens += completion_tokens
             self.total_tokens += total_tokens
 
+            # Update centralized tracking if available
+            if self.usage_tracker:
+                self.usage_tracker.update_usage(
+                    task_type=task_type,
+                    model=self.model_name,
+                    input_tokens=prompt_tokens,
+                    output_tokens=completion_tokens,
+                    total_tokens=total_tokens,
+                )
+
             logger.debug(
-                f"Usage - Input: {prompt_tokens}, Output: {completion_tokens}, Total: {total_tokens}"
+                f"Usage - Task: {task_type}, Input: {prompt_tokens}, Output: {completion_tokens}, Total: {total_tokens}"
             )
         else:
             logger.warning("No usage metadata in response")
@@ -150,7 +177,7 @@ class GeminiClient:
         """Get token usage statistics.
 
         Returns:
-            Dictionary with usage statistics
+            Dictionary with usage statistics (local tracking for backward compatibility)
         """
         # Determine pricing tier using configured pricing
         if "flash" in self.model_name.lower():
@@ -166,5 +193,25 @@ class GeminiClient:
             "input_tokens": self.input_tokens,
             "output_tokens": self.output_tokens,
             "call_count": self.call_count,
-            "estimated_cost": round(estimated_cost, 6)
+            "estimated_cost": round(estimated_cost, 6),
         }
+
+    def get_centralized_usage_report(self) -> Optional[Dict]:
+        """Get comprehensive usage report from centralized tracker.
+
+        Returns:
+            Detailed usage report from UsageTracker if available, None otherwise
+        """
+        if self.usage_tracker:
+            return self.usage_tracker.get_detailed_report()
+        return None
+
+    def get_cost_optimization_insights(self) -> Optional[Dict]:
+        """Get cost optimization insights from centralized tracker.
+
+        Returns:
+            Cost optimization insights if centralized tracker available, None otherwise
+        """
+        if self.usage_tracker:
+            return self.usage_tracker.get_cost_optimization_insights()
+        return None

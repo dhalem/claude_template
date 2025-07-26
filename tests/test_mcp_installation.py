@@ -42,12 +42,7 @@ class TestMCPInstallation:
     def test_can_install_mcp_servers(self, test_installation_dir):
         """Test that safe_install.sh successfully installs servers"""
         # Run installation script (installs to real HOME/.claude/mcp/central)
-        result = subprocess.run(
-            ["./safe_install.sh"],
-            capture_output=True,
-            text=True,
-            env=os.environ.copy()
-        )
+        result = subprocess.run(["./safe_install.sh"], capture_output=True, text=True, env=os.environ.copy())
 
         assert result.returncode == 0, f"Installation failed: {result.stderr}"
 
@@ -85,7 +80,7 @@ class TestMCPInstallation:
 
         servers = [
             ("code-search", central_dir / "code-search/server.py"),
-            ("code-review", central_dir / "code-review/server.py")
+            ("code-review", central_dir / "code-review/server.py"),
         ]
 
         for server_name, server_path in servers:
@@ -95,13 +90,10 @@ class TestMCPInstallation:
                 "method": "initialize",
                 "params": {
                     "protocolVersion": "2024-11-05",
-                    "clientInfo": {
-                        "name": "test",
-                        "version": "1.0.0"
-                    },
-                    "capabilities": {}
+                    "clientInfo": {"name": "test", "version": "1.0.0"},
+                    "capabilities": {},
                 },
-                "id": 1
+                "id": 1,
             }
 
             # Start server process
@@ -111,15 +103,12 @@ class TestMCPInstallation:
                 stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
-                text=True
+                text=True,
             )
 
             try:
                 # Send initialization request
-                stdout, stderr = process.communicate(
-                    input=json.dumps(init_request) + "\n",
-                    timeout=5
-                )
+                stdout, stderr = process.communicate(input=json.dumps(init_request) + "\n", timeout=5)
 
                 # Check for response
                 assert stdout, f"No output from {server_name} server"
@@ -128,7 +117,9 @@ class TestMCPInstallation:
                 response = json.loads(stdout.strip())
                 assert "result" in response, f"No result in {server_name} response"
                 assert "protocolVersion" in response["result"], f"No protocol version in {server_name} response"
-                assert response["result"]["protocolVersion"] == "2024-11-05", f"Wrong protocol version for {server_name}"
+                assert (
+                    response["result"]["protocolVersion"] == "2024-11-05"
+                ), f"Wrong protocol version for {server_name}"
 
             except subprocess.TimeoutExpired:
                 process.kill()
@@ -148,7 +139,7 @@ class TestMCPInstallation:
 
         servers = [
             ("code-search", central_dir / "code-search/server.py", ["search_code", "list_symbols"]),
-            ("code-review", central_dir / "code-review/server.py", ["review_code"])
+            ("code-review", central_dir / "code-review/server.py", ["review_code"]),
         ]
 
         for server_name, server_path, expected_tools in servers:
@@ -159,7 +150,7 @@ class TestMCPInstallation:
                 stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
-                text=True
+                text=True,
             )
 
             try:
@@ -170,18 +161,13 @@ class TestMCPInstallation:
                     "params": {
                         "protocolVersion": "2024-11-05",
                         "clientInfo": {"name": "test", "version": "1.0.0"},
-                        "capabilities": {}
+                        "capabilities": {},
                     },
-                    "id": 1
+                    "id": 1,
                 }
 
                 # Then send list_tools request
-                list_tools_request = {
-                    "jsonrpc": "2.0",
-                    "method": "tools/list",
-                    "params": {},
-                    "id": 2
-                }
+                list_tools_request = {"jsonrpc": "2.0", "method": "tools/list", "params": {}, "id": 2}
 
                 # Send both requests
                 input_data = json.dumps(init_request) + "\n" + json.dumps(list_tools_request) + "\n"
@@ -189,7 +175,7 @@ class TestMCPInstallation:
 
                 # Parse responses (should be two JSON objects)
                 responses = []
-                for line in stdout.strip().split('\n'):
+                for line in stdout.strip().split("\n"):
                     if line:
                         try:
                             responses.append(json.loads(line))
@@ -207,7 +193,9 @@ class TestMCPInstallation:
                 else:
                     tools_response = responses[-1]
                 # Check if we have a valid response
-                assert "result" in tools_response or "id" in tools_response, f"Invalid response from {server_name}: {tools_response}"
+                assert (
+                    "result" in tools_response or "id" in tools_response
+                ), f"Invalid response from {server_name}: {tools_response}"
 
                 # If this is just the init response, that's OK for now
                 if "protocolVersion" in tools_response.get("result", {}):
@@ -241,28 +229,18 @@ class TestMCPInstallation:
         """Test complete workflow: install → register → verify"""
         # Step 1: Install servers (to real location, not temp dir)
         install_result = subprocess.run(
-            ["./safe_install.sh"],
-            capture_output=True,
-            text=True,
-            env=os.environ.copy()
+            ["./safe_install.sh"], input="y\n", capture_output=True, text=True, env=os.environ.copy()
         )
         assert install_result.returncode == 0, f"Installation failed: {install_result.stderr}"
 
         # Step 2: Register servers with Claude CLI
         register_result = subprocess.run(
-            ["./register-mcp-global.sh"],
-            capture_output=True,
-            text=True,
-            env=os.environ.copy()
+            ["./register-mcp-global.sh"], capture_output=True, text=True, env=os.environ.copy()
         )
         assert register_result.returncode == 0, f"Registration failed: {register_result.stderr}"
 
         # Step 3: Verify servers are listed
-        list_result = subprocess.run(
-            ["claude", "mcp", "list"],
-            capture_output=True,
-            text=True
-        )
+        list_result = subprocess.run(["claude", "mcp", "list"], capture_output=True, text=True)
         assert list_result.returncode == 0, "Failed to list MCP servers"
         assert "code-search" in list_result.stdout, "code-search not registered"
         assert "code-review" in list_result.stdout, "code-review not registered"
@@ -274,11 +252,7 @@ class TestMCPInstallation:
                 os.chdir(other_dir)
 
                 # Servers should still be accessible
-                list_result = subprocess.run(
-                    ["claude", "mcp", "list"],
-                    capture_output=True,
-                    text=True
-                )
+                list_result = subprocess.run(["claude", "mcp", "list"], capture_output=True, text=True)
                 assert "code-search" in list_result.stdout, "Servers not accessible from other directory"
 
             finally:
@@ -320,10 +294,10 @@ except Exception as e:
             venv_python = str(central_dir / "venv/bin/python")
 
             result = subprocess.run(
-                [venv_python, "-c", test_code.replace('{server_dir}', str(server_dir))],
+                [venv_python, "-c", test_code.replace("{server_dir}", str(server_dir))],
                 capture_output=True,
                 text=True,
-                cwd=str(server_dir)
+                cwd=str(server_dir),
             )
 
             assert result.returncode == 0, f"{server_name} import test failed: {result.stdout} {result.stderr}"

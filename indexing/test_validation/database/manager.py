@@ -73,7 +73,7 @@ class DatabaseManager:
                 conn.execute(f"PRAGMA busy_timeout = {timeout_ms}")
 
             # Set row factory if specified
-            if row_factory == 'dict':
+            if row_factory == "dict":
                 conn.row_factory = sqlite3.Row
 
             with self._lock:
@@ -105,13 +105,14 @@ class DatabaseManager:
                 cursor = conn.cursor()
 
                 # Create test_validations table with enhanced constraints
-                cursor.execute(f'''
+                cursor.execute(
+                    f"""
                     CREATE TABLE IF NOT EXISTS {TABLE_TEST_VALIDATIONS} (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
                         test_fingerprint TEXT UNIQUE NOT NULL,
                         test_name TEXT,
-                        test_file_path TEXT NOT NULL,
-                        current_stage TEXT NOT NULL CHECK (current_stage IN ('design', 'implementation', 'breaking', 'approval', 'completed', 'failed')),
+                        file_path TEXT NOT NULL,
+                        validation_stage TEXT NOT NULL CHECK (validation_stage IN ('design', 'implementation', 'breaking', 'approval', 'completed', 'failed')),
                         status TEXT DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'APPROVED', 'REJECTED', 'EXPIRED')),
                         gemini_analysis TEXT,
                         validation_timestamp DATETIME,
@@ -129,32 +130,38 @@ class DatabaseManager:
                         breaking_analysis TEXT,
                         approval_notes TEXT
                     )
-                ''')
+                """
+                )
 
                 # Create validation_history table with foreign key
-                cursor.execute(f'''
+                cursor.execute(
+                    f"""
                     CREATE TABLE IF NOT EXISTS {TABLE_VALIDATION_HISTORY} (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
                         test_fingerprint TEXT NOT NULL,
                         stage TEXT NOT NULL CHECK (stage IN ('design', 'implementation', 'breaking', 'approval')),
                         attempt_number INTEGER,
-                        validation_result TEXT NOT NULL,
+                        status TEXT NOT NULL,
                         validated_at DATETIME NOT NULL,
                         validator_id TEXT,
                         feedback TEXT,
                         timestamp DATETIME,
                         FOREIGN KEY (test_fingerprint) REFERENCES {TABLE_TEST_VALIDATIONS}(test_fingerprint)
                     )
-                ''')
+                """
+                )
 
                 # Create index on foreign key for performance
-                cursor.execute(f'''
+                cursor.execute(
+                    f"""
                     CREATE INDEX IF NOT EXISTS idx_validation_history_fingerprint
                     ON {TABLE_VALIDATION_HISTORY} (test_fingerprint)
-                ''')
+                """
+                )
 
                 # Create api_usage table (without daily_total_cents - will be calculated)
-                cursor.execute(f'''
+                cursor.execute(
+                    f"""
                     CREATE TABLE IF NOT EXISTS {TABLE_API_USAGE} (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
                         timestamp DATETIME NOT NULL,
@@ -164,14 +171,16 @@ class DatabaseManager:
                         output_tokens INTEGER,
                         cost_cents INTEGER
                     )
-                ''')
+                """
+                )
 
                 # Create approval_tokens table
-                cursor.execute(f'''
+                cursor.execute(
+                    f"""
                     CREATE TABLE IF NOT EXISTS {TABLE_APPROVAL_TOKENS} (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
                         test_fingerprint TEXT NOT NULL,
-                        approval_token TEXT UNIQUE NOT NULL,
+                        token TEXT UNIQUE NOT NULL,
                         approved_by TEXT NOT NULL,
                         approved_at DATETIME NOT NULL,
                         stage TEXT CHECK (stage IN ('design', 'implementation', 'breaking', 'approval')),
@@ -181,13 +190,16 @@ class DatabaseManager:
                         status TEXT CHECK (status IN ('VALID', 'USED', 'EXPIRED', 'REVOKED')),
                         FOREIGN KEY (test_fingerprint) REFERENCES {TABLE_TEST_VALIDATIONS}(test_fingerprint)
                     )
-                ''')
+                """
+                )
 
                 # Create index on foreign key for performance
-                cursor.execute(f'''
+                cursor.execute(
+                    f"""
                     CREATE INDEX IF NOT EXISTS idx_approval_tokens_fingerprint
                     ON {TABLE_APPROVAL_TOKENS} (test_fingerprint)
-                ''')
+                """
+                )
 
                 # Ensure transaction is committed
                 conn.commit()
@@ -261,8 +273,4 @@ class DatabaseManager:
             active = self._active_connections
             max_conn = self._max_connections
 
-        return {
-            'active_connections': active,
-            'max_connections': max_conn,
-            'available_connections': max_conn - active
-        }
+        return {"active_connections": active, "max_connections": max_conn, "available_connections": max_conn - active}

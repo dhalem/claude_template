@@ -36,7 +36,7 @@ class TestDatabaseSchema:
     @pytest.fixture
     def temp_db_path(self):
         """Create a temporary database path for testing."""
-        with tempfile.NamedTemporaryFile(suffix='.db', delete=False) as f:
+        with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as f:
             db_path = f.name
         yield db_path
         # Cleanup
@@ -62,12 +62,7 @@ class TestDatabaseSchema:
         cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
         tables = {row[0] for row in cursor.fetchall()}
 
-        expected_tables = {
-            'test_validations',
-            'validation_history',
-            'api_usage',
-            'approval_tokens'
-        }
+        expected_tables = {"test_validations", "validation_history", "api_usage", "approval_tokens"}
 
         assert expected_tables.issubset(tables), f"Missing tables. Found: {tables}"
         conn.close()
@@ -164,13 +159,13 @@ class TestDatabaseSchema:
         columns = {row[1]: row[2] for row in cursor.fetchall()}
 
         expected_columns = {
-            'id': 'INTEGER',
-            'timestamp': 'DATETIME',
-            'service': 'TEXT',
-            'operation': 'TEXT',
-            'input_tokens': 'INTEGER',
-            'output_tokens': 'INTEGER',
-            'cost_cents': 'INTEGER'
+            "id": "INTEGER",
+            "timestamp": "DATETIME",
+            "service": "TEXT",
+            "operation": "TEXT",
+            "input_tokens": "INTEGER",
+            "output_tokens": "INTEGER",
+            "cost_cents": "INTEGER"
             # daily_total_cents removed - will be calculated on the fly
         }
 
@@ -245,7 +240,7 @@ class TestDatabaseSchema:
         """)
         conn.commit()
 
-        # This should raise IntegrityError due to PRIMARY KEY
+        # This should raise IntegrityError due to UNIQUE constraint on token
         with pytest.raises(sqlite3.IntegrityError):
             cursor.execute("""
                 INSERT INTO approval_tokens (approval_token, test_fingerprint, approved_by, approved_at, stage, issued_timestamp, expires_timestamp, status)
