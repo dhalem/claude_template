@@ -1,0 +1,22 @@
+# Duplicate Prevention System Dependencies
+
+# Vector Database
+# Note: Currently using requests for direct REST API calls
+# TODO: Consider migrating to official qdrant-client SDK for better maintainability
+requests>=2.25.0,<3.0.0
+
+# Testing Dependencies
+pytest>=7.0.0,<9.0.0
+pytest-timeout>=2.1.0,<3.0.0
+pytest-mock>=3.10.0,<4.0.0
+
+# Embedding Generation Dependencies (A1.4)
+sentence-transformers>=2.2.0,<3.0.0
+transformers>=4.20.0,<5.0.0
+torch>=1.12.0,<3.0.0
+numpy>=1.21.0,<2.0.0
+
+# Development Dependencies
+black>=23.0.0,<24.0.0
+isort>=5.12.0,<6.0.0
+mypy>=1.0.0,<2.0.0

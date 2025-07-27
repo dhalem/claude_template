@@ -36,7 +36,7 @@ class TestDatabaseConnectionManagement:
     @pytest.fixture
     def temp_db_path(self):
         """Create a temporary database path for testing."""
-        with tempfile.NamedTemporaryFile(suffix='.db', delete=False) as f:
+        with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as f:
             db_path = f.name
         yield db_path
         # Cleanup
@@ -97,11 +97,14 @@ class TestDatabaseConnectionManagement:
         # Insert a test record
         with db_manager.get_db_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("""
-                INSERT INTO test_validations (test_fingerprint, test_name, test_file_path,
-                    current_stage, status, validation_timestamp)
-                VALUES (?, ?, ?, ?, ?, datetime('now'))
-            """, ('fp_test_1', 'test1', '/test1.py', 'design', 'PENDING'))
+            cursor.execute(
+                """
+                INSERT INTO test_validations (test_fingerprint, test_name, test_file_path, file_path,
+                    validation_stage, status, validation_timestamp)
+                VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
+            """,
+                ("fp_test_1", "test1", "/test1.py", "/test1.py", "design", "PENDING"),
+            )
             conn.commit()
 
         # Try to insert another record but fail midway
@@ -109,11 +112,14 @@ class TestDatabaseConnectionManagement:
             with db_manager.get_transaction() as conn:  # New method we need
                 cursor = conn.cursor()
                 # First insert - should work
-                cursor.execute("""
-                    INSERT INTO test_validations (test_fingerprint, test_name, test_file_path,
-                        current_stage, status, validation_timestamp)
-                    VALUES (?, ?, ?, ?, ?, datetime('now'))
-                """, ('fp_test_2', 'test2', '/test2.py', 'design', 'PENDING'))
+                cursor.execute(
+                    """
+                    INSERT INTO test_validations (test_fingerprint, test_name, test_file_path, file_path,
+                        validation_stage, status, validation_timestamp)
+                    VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
+                """,
+                    ("fp_test_2", "test2", "/test2.py", "/test2.py", "design", "PENDING"),
+                )
 
                 # Force an error
                 raise RuntimeError("Simulated error")
@@ -123,7 +129,7 @@ class TestDatabaseConnectionManagement:
         # Verify the second insert was rolled back
         with db_manager.get_db_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("SELECT COUNT(*) FROM test_validations WHERE test_fingerprint = ?", ('fp_test_2',))
+            cursor.execute("SELECT COUNT(*) FROM test_validations WHERE test_fingerprint = ?", ("fp_test_2",))
             count = cursor.fetchone()[0]
             assert count == 0, "Transaction should have been rolled back"
 
@@ -142,20 +148,30 @@ class TestDatabaseConnectionManagement:
                 with db_manager.get_db_connection() as conn:
                     cursor = conn.cursor()
                     # Each thread inserts its own record
-                    cursor.execute("""
-                        INSERT INTO test_validations (test_fingerprint, test_name, test_file_path,
-                            current_stage, status, validation_timestamp)
-                        VALUES (?, ?, ?, ?, ?, datetime('now'))
-                    """, (f'fp_thread_{thread_id}', f'test_{thread_id}',
-                          f'/test_{thread_id}.py', 'design', 'PENDING'))
+                    cursor.execute(
+                        """
+                        INSERT INTO test_validations (test_fingerprint, test_name, test_file_path, file_path,
+                            validation_stage, status, validation_timestamp)
+                        VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
+                    """,
+                        (
+                            f"fp_thread_{thread_id}",
+                            f"test_{thread_id}",
+                            f"/test_{thread_id}.py",
+                            f"/test_{thread_id}.py",
+                            "design",
+                            "PENDING",
+                        ),
+                    )
                     conn.commit()
 
                     # Simulate some work
                     time.sleep(0.01)
 
                     # Verify our insert
-                    cursor.execute("SELECT COUNT(*) FROM test_validations WHERE test_fingerprint = ?",
-                                 (f'fp_thread_{thread_id}',))
+                    cursor.execute(
+                        "SELECT COUNT(*) FROM test_validations WHERE test_fingerprint = ?", (f"fp_thread_{thread_id}",)
+                    )
                     count = cursor.fetchone()[0]
                     results.append((thread_id, count))
             except Exception as e:
@@ -186,8 +202,8 @@ class TestDatabaseConnectionManagement:
 
         # Get pool stats (method doesn't exist yet)
         initial_stats = db_manager.get_pool_stats()
-        assert initial_stats['active_connections'] == 0
-        assert initial_stats['max_connections'] > 0
+        assert initial_stats["active_connections"] == 0
+        assert initial_stats["max_connections"] > 0
 
         # Open multiple connections
         contexts = []
@@ -200,7 +216,7 @@ class TestDatabaseConnectionManagement:
 
         # Check pool stats
         stats = db_manager.get_pool_stats()
-        assert stats['active_connections'] == 5
+        assert stats["active_connections"] == 5
 
         # Clean up
         for ctx in contexts:
@@ -208,7 +224,7 @@ class TestDatabaseConnectionManagement:
 
         # Verify connections returned to pool
         final_stats = db_manager.get_pool_stats()
-        assert final_stats['active_connections'] == 0
+        assert final_stats["active_connections"] == 0
 
     def test_connection_timeout_handling(self, temp_db_path):
         """Test that connections handle timeouts appropriately."""
@@ -238,11 +254,13 @@ class TestDatabaseConnectionManagement:
         lock_conn = sqlite3.connect(temp_db_path)
         lock_conn.execute("BEGIN EXCLUSIVE")
         lock_cursor = lock_conn.cursor()
-        lock_cursor.execute("""
-            INSERT INTO test_validations (test_fingerprint, test_name, test_file_path,
-                current_stage, status, validation_timestamp)
-            VALUES ('fp_lock', 'lock_test', '/lock.py', 'design', 'PENDING', datetime('now'))
-        """)
+        lock_cursor.execute(
+            """
+            INSERT INTO test_validations (test_fingerprint, test_name, test_file_path, file_path,
+                validation_stage, status, validation_timestamp)
+            VALUES ('fp_lock', 'lock_test', '/lock.py', '/lock.py', 'design', 'PENDING', datetime('now'))
+        """
+        )
         # Don't commit - hold the lock
 
         # Try to get a connection with timeout
@@ -250,11 +268,13 @@ class TestDatabaseConnectionManagement:
         with pytest.raises(sqlite3.OperationalError):  # Should timeout
             with db_manager.get_db_connection(timeout=0.5) as conn:
                 cursor = conn.cursor()
-                cursor.execute("""
-                    INSERT INTO test_validations (test_fingerprint, test_name, test_file_path,
-                        current_stage, status, validation_timestamp)
-                    VALUES ('fp_timeout', 'timeout_test', '/timeout.py', 'design', 'PENDING', datetime('now'))
-                """)
+                cursor.execute(
+                    """
+                    INSERT INTO test_validations (test_fingerprint, test_name, test_file_path, file_path,
+                        validation_stage, status, validation_timestamp)
+                    VALUES ('fp_timeout', 'timeout_test', '/timeout.py', '/timeout.py', 'design', 'PENDING', datetime('now'))
+                """
+                )
                 conn.commit()
 
         # Verify we didn't wait forever
@@ -274,24 +294,27 @@ class TestDatabaseConnectionManagement:
         # Insert test data
         with db_manager.get_db_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("""
-                INSERT INTO test_validations (test_fingerprint, test_name, test_file_path,
-                    current_stage, status, validation_timestamp)
-                VALUES (?, ?, ?, ?, ?, datetime('now'))
-            """, ('fp_dict_test', 'dict_test', '/dict.py', 'design', 'PENDING'))
+            cursor.execute(
+                """
+                INSERT INTO test_validations (test_fingerprint, test_name, test_file_path, file_path,
+                    validation_stage, status, validation_timestamp)
+                VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
+            """,
+                ("fp_dict_test", "dict_test", "/dict.py", "/dict.py", "design", "PENDING"),
+            )
             conn.commit()
 
         # Get connection with row factory
-        with db_manager.get_db_connection(row_factory='dict') as conn:
+        with db_manager.get_db_connection(row_factory="dict") as conn:
             cursor = conn.cursor()
-            cursor.execute("SELECT * FROM test_validations WHERE test_fingerprint = ?", ('fp_dict_test',))
+            cursor.execute("SELECT * FROM test_validations WHERE test_fingerprint = ?", ("fp_dict_test",))
             row = cursor.fetchone()
 
             # Should be able to access as dict
-            assert isinstance(row, dict) or hasattr(row, '__getitem__')
-            assert row['test_fingerprint'] == 'fp_dict_test'
-            assert row['test_name'] == 'dict_test'
-            assert row['status'] == 'PENDING'
+            assert isinstance(row, dict) or hasattr(row, "__getitem__")
+            assert row["test_fingerprint"] == "fp_dict_test"
+            assert row["test_name"] == "dict_test"
+            assert row["status"] == "PENDING"
 
     def test_get_transaction_auto_rollback(self, temp_db_path):
         """Test that get_transaction automatically rolls back on exceptions."""
@@ -302,11 +325,13 @@ class TestDatabaseConnectionManagement:
         # Insert initial data
         with db_manager.get_db_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("""
-                INSERT INTO test_validations (test_fingerprint, test_name, test_file_path,
-                    current_stage, status, validation_timestamp)
-                VALUES ('fp_base', 'base_test', '/base.py', 'design', 'PENDING', datetime('now'))
-            """)
+            cursor.execute(
+                """
+                INSERT INTO test_validations (test_fingerprint, test_name, test_file_path, file_path,
+                    validation_stage, status, validation_timestamp)
+                VALUES ('fp_base', 'base_test', '/base.py', '/base.py', 'design', 'PENDING', datetime('now'))
+            """
+            )
             conn.commit()
 
         # Use get_transaction - should auto-rollback on exception
@@ -314,18 +339,22 @@ class TestDatabaseConnectionManagement:
             with db_manager.get_transaction() as conn:
                 cursor = conn.cursor()
                 # Update existing record
-                cursor.execute("""
+                cursor.execute(
+                    """
                     UPDATE test_validations
                     SET status = 'APPROVED'
                     WHERE test_fingerprint = 'fp_base'
-                """)
+                """
+                )
 
                 # Insert new record
-                cursor.execute("""
-                    INSERT INTO test_validations (test_fingerprint, test_name, test_file_path,
-                        current_stage, status, validation_timestamp)
-                    VALUES ('fp_trans', 'trans_test', '/trans.py', 'design', 'PENDING', datetime('now'))
-                """)
+                cursor.execute(
+                    """
+                    INSERT INTO test_validations (test_fingerprint, test_name, test_file_path, file_path,
+                        validation_stage, status, validation_timestamp)
+                    VALUES ('fp_trans', 'trans_test', '/trans.py', '/trans.py', 'design', 'PENDING', datetime('now'))
+                """
+                )
 
                 # Raise error before commit
                 raise ValueError("Simulated error")
@@ -336,7 +365,7 @@ class TestDatabaseConnectionManagement:
             # Check original record unchanged
             cursor.execute("SELECT status FROM test_validations WHERE test_fingerprint = 'fp_base'")
             status = cursor.fetchone()[0]
-            assert status == 'PENDING', "Update should have been rolled back"
+            assert status == "PENDING", "Update should have been rolled back"
 
             # Check new record not inserted
             cursor.execute("SELECT COUNT(*) FROM test_validations WHERE test_fingerprint = 'fp_trans'")

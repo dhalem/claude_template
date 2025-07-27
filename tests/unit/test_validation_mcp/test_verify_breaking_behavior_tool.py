@@ -33,7 +33,7 @@ class TestVerifyBreakingBehaviorTool:
     def setup_method(self):
         """Setup test environment for each test."""
         # Create temporary database file
-        tmp_file = tempfile.NamedTemporaryFile(suffix='.db', delete=False)
+        tmp_file = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
         self.db_path = tmp_file.name
         tmp_file.close()
 
@@ -44,19 +44,19 @@ class TestVerifyBreakingBehaviorTool:
         self.config.set("validation_stages", ["design", "implementation", "breaking", "approval"])
 
         # Set required environment variable for testing
-        os.environ['GEMINI_API_KEY'] = 'test_api_key_for_integration_testing'
+        os.environ["GEMINI_API_KEY"] = "test_api_key_for_integration_testing"
 
         # Create server
         self.server = TestValidationMCPServer(config=self.config)
 
     def teardown_method(self):
         """Cleanup test environment after each test."""
-        if hasattr(self, 'db_path') and os.path.exists(self.db_path):
+        if hasattr(self, "db_path") and os.path.exists(self.db_path):
             os.unlink(self.db_path)
 
         # Clean up environment variable
-        if 'GEMINI_API_KEY' in os.environ:
-            del os.environ['GEMINI_API_KEY']
+        if "GEMINI_API_KEY" in os.environ:
+            del os.environ["GEMINI_API_KEY"]
 
     def _create_approved_implementation(self):
         """Helper to create an approved implementation for testing."""
@@ -72,7 +72,7 @@ def test_user_authentication():
     assert login_result.session_token is not None
 """,
             "test_file_path": "test_user_authentication.py",
-            "requirements": "Users should be able to authenticate with username and password. Successful authentication should return session token and user ID."
+            "requirements": "Users should be able to authenticate with username and password. Successful authentication should return session token and user ID.",
         }
 
         design_result = self.server.call_tool("design_test", design_params)
@@ -107,7 +107,7 @@ class LoginResult:
         self.user_id = user_id
         self.session_token = session_token
 """,
-            "design_token": design_token
+            "design_token": design_token,
         }
 
         impl_result = self.server.call_tool("validate_implementation", impl_params)
@@ -148,9 +148,9 @@ class LoginResult:
             "breaking_scenarios": [
                 "Invalid username should cause authentication to fail",
                 "Empty password should cause authentication to fail",
-                "Non-existent user should cause authentication to fail"
+                "Non-existent user should cause authentication to fail",
             ],
-            "implementation_token": implementation_token
+            "implementation_token": implementation_token,
         }
 
         # This should work (not raise NotImplementedError anymore)
@@ -172,7 +172,7 @@ class LoginResult:
         valid_params = {
             "test_fingerprint": fingerprint,
             "breaking_scenarios": ["Test should fail with invalid data"],
-            "implementation_token": implementation_token
+            "implementation_token": implementation_token,
         }
 
         result = self.server.call_tool("verify_breaking_behavior", valid_params)
@@ -182,7 +182,7 @@ class LoginResult:
         invalid_params = {
             "test_fingerprint": fingerprint,
             "breaking_scenarios": ["Test should fail with invalid data"],
-            "implementation_token": "invalid_token_123"
+            "implementation_token": "invalid_token_123",
         }
 
         with pytest.raises(ValueError, match="Invalid or expired implementation token"):
@@ -195,7 +195,7 @@ class LoginResult:
         breaking_params = {
             "test_fingerprint": fingerprint,
             "breaking_scenarios": ["Authentication should fail with wrong password"],
-            "implementation_token": implementation_token
+            "implementation_token": implementation_token,
         }
 
         result = self.server.call_tool("verify_breaking_behavior", breaking_params)
@@ -203,10 +203,13 @@ class LoginResult:
         # Verify data was updated in database
         with self.server.db_manager.get_db_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("""
-                SELECT current_stage, status, updated_at
+            cursor.execute(
+                """
+                SELECT validation_stage, status, updated_at
                 FROM test_validations WHERE test_fingerprint = ?
-            """, (fingerprint,))
+            """,
+                (fingerprint,),
+            )
             row = cursor.fetchone()
 
             assert row is not None
@@ -220,7 +223,7 @@ class LoginResult:
         breaking_params = {
             "test_fingerprint": fingerprint,
             "breaking_scenarios": ["Test should fail when authentication method returns error"],
-            "implementation_token": implementation_token
+            "implementation_token": implementation_token,
         }
 
         result = self.server.call_tool("verify_breaking_behavior", breaking_params)
@@ -244,9 +247,9 @@ class LoginResult:
                 "Authentication should fail when username is empty",
                 "Authentication should fail when password is None",
                 "Authentication should fail when user does not exist in database",
-                "Authentication should return error for disabled user accounts"
+                "Authentication should return error for disabled user accounts",
             ],
-            "implementation_token": implementation_token
+            "implementation_token": implementation_token,
         }
 
         result = self.server.call_tool("verify_breaking_behavior", breaking_params)
@@ -271,9 +274,9 @@ class LoginResult:
             "test_fingerprint": fingerprint,
             "breaking_scenarios": [
                 "Authentication should fail with invalid credentials",
-                "Login attempt should be rejected for locked accounts"
+                "Login attempt should be rejected for locked accounts",
             ],
-            "implementation_token": implementation_token
+            "implementation_token": implementation_token,
         }
 
         result = self.server.call_tool("verify_breaking_behavior", breaking_params)
@@ -284,9 +287,9 @@ class LoginResult:
 
         # Should mention key concepts
         analysis_lower = analysis.lower()
-        assert any(keyword in analysis_lower for keyword in [
-            "breaking", "failure", "scenario", "test", "authentication"
-        ])
+        assert any(
+            keyword in analysis_lower for keyword in ["breaking", "failure", "scenario", "test", "authentication"]
+        )
 
     def test_verify_breaking_behavior_edge_cases(self):
         """Test verify_breaking_behavior handles edge cases properly."""
@@ -294,25 +297,27 @@ class LoginResult:
 
         # Test with empty breaking scenarios
         with pytest.raises(ValueError, match="breaking_scenarios cannot be empty"):
-            self.server.call_tool("verify_breaking_behavior", {
-                "test_fingerprint": fingerprint,
-                "breaking_scenarios": [],
-                "implementation_token": implementation_token
-            })
+            self.server.call_tool(
+                "verify_breaking_behavior",
+                {
+                    "test_fingerprint": fingerprint,
+                    "breaking_scenarios": [],
+                    "implementation_token": implementation_token,
+                },
+            )
 
         # Test with missing fingerprint
         with pytest.raises(ValueError, match="Missing required parameter"):
-            self.server.call_tool("verify_breaking_behavior", {
-                "breaking_scenarios": ["Some scenario"],
-                "implementation_token": implementation_token
-            })
+            self.server.call_tool(
+                "verify_breaking_behavior",
+                {"breaking_scenarios": ["Some scenario"], "implementation_token": implementation_token},
+            )
 
         # Test with missing implementation token
         with pytest.raises(ValueError, match="Missing required parameter"):
-            self.server.call_tool("verify_breaking_behavior", {
-                "test_fingerprint": fingerprint,
-                "breaking_scenarios": ["Some scenario"]
-            })
+            self.server.call_tool(
+                "verify_breaking_behavior", {"test_fingerprint": fingerprint, "breaking_scenarios": ["Some scenario"]}
+            )
 
     def test_verify_breaking_behavior_fingerprint_mismatch(self):
         """Test verify_breaking_behavior with mismatched fingerprints."""
@@ -322,11 +327,14 @@ class LoginResult:
         wrong_fingerprint = "wrong_fingerprint_12345"
 
         with pytest.raises(ValueError, match="Token fingerprint mismatch"):
-            self.server.call_tool("verify_breaking_behavior", {
-                "test_fingerprint": wrong_fingerprint,
-                "breaking_scenarios": ["Test should fail"],
-                "implementation_token": implementation_token
-            })
+            self.server.call_tool(
+                "verify_breaking_behavior",
+                {
+                    "test_fingerprint": wrong_fingerprint,
+                    "breaking_scenarios": ["Test should fail"],
+                    "implementation_token": implementation_token,
+                },
+            )
 
     def test_verify_breaking_behavior_scenario_validation(self):
         """Test verify_breaking_behavior validates scenario quality."""
@@ -338,9 +346,9 @@ class LoginResult:
             "breaking_scenarios": [
                 "Authentication should fail when username contains SQL injection",
                 "Login should be rejected when account is temporarily locked",
-                "Password validation should fail for weak passwords"
+                "Password validation should fail for weak passwords",
             ],
-            "implementation_token": implementation_token
+            "implementation_token": implementation_token,
         }
 
         good_result = self.server.call_tool("verify_breaking_behavior", good_params)
@@ -349,12 +357,8 @@ class LoginResult:
         # Test with vague scenarios
         vague_params = {
             "test_fingerprint": fingerprint,
-            "breaking_scenarios": [
-                "Test should fail",
-                "Something bad happens",
-                "Error occurs"
-            ],
-            "implementation_token": implementation_token
+            "breaking_scenarios": ["Test should fail", "Something bad happens", "Error occurs"],
+            "implementation_token": implementation_token,
         }
 
         vague_result = self.server.call_tool("verify_breaking_behavior", vague_params)
@@ -382,7 +386,7 @@ def test_concurrent_authentication_{worker_id}():
     assert login_result.session_token is not None
 """,
                     "test_file_path": f"test_concurrent_authentication_{worker_id}.py",
-                    "requirements": f"Worker {worker_id}: Users should be able to authenticate with username and password. Successful authentication should return session token and user ID."
+                    "requirements": f"Worker {worker_id}: Users should be able to authenticate with username and password. Successful authentication should return session token and user ID.",
                 }
 
                 design_result = self.server.call_tool("design_test", design_params)
@@ -416,7 +420,7 @@ class LoginResult:
         self.user_id = user_id
         self.session_token = session_token
 """,
-                    "design_token": design_token
+                    "design_token": design_token,
                 }
 
                 impl_result = self.server.call_tool("validate_implementation", impl_params)
@@ -426,7 +430,7 @@ class LoginResult:
                 breaking_params = {
                     "test_fingerprint": fingerprint,
                     "breaking_scenarios": [f"Authentication should fail in concurrent scenario {worker_id}"],
-                    "implementation_token": implementation_token
+                    "implementation_token": implementation_token,
                 }
                 result = self.server.call_tool("verify_breaking_behavior", breaking_params)
                 results.append(result)
@@ -461,7 +465,7 @@ class LoginResult:
         breaking_params = {
             "test_fingerprint": fingerprint,
             "breaking_scenarios": ["Authentication should fail with invalid token"],
-            "implementation_token": implementation_token
+            "implementation_token": implementation_token,
         }
 
         result = self.server.call_tool("verify_breaking_behavior", breaking_params)
@@ -488,9 +492,9 @@ class LoginResult:
                 "Authentication should fail when provided credentials don't match database records",
                 "Authentication should fail when database connection is unavailable",
                 "Authentication should handle concurrent login attempts gracefully",
-                "Authentication should prevent SQL injection in username field"
+                "Authentication should prevent SQL injection in username field",
             ],
-            "implementation_token": implementation_token
+            "implementation_token": implementation_token,
         }
 
         result = self.server.call_tool("verify_breaking_behavior", breaking_params)

@@ -95,10 +95,10 @@ def test_another():
                 cursor = conn.cursor()
                 cursor.execute(
                     """
-                    INSERT INTO test_validations (test_fingerprint, file_path, validation_stage)
-                    VALUES (?, ?, ?)
+                    INSERT INTO test_validations (test_fingerprint, test_file_path, file_path, validation_stage)
+                    VALUES (?, ?, ?, ?)
                 """,
-                    (fingerprint, filename, "design"),
+                    (fingerprint, filename, filename, "design"),
                 )
                 conn.commit()
 
@@ -107,8 +107,8 @@ def test_another():
                 cursor = conn.cursor()
                 cursor.execute(
                     """
-                    SELECT test_fingerprint, file_path FROM test_validations
-                    WHERE file_path = ?
+                    SELECT test_fingerprint, test_file_path FROM test_validations
+                    WHERE test_file_path = ?
                 """,
                     (filename,),
                 )
@@ -194,10 +194,10 @@ def test_user_permissions():
                 cursor.execute(
                     """
                     INSERT INTO test_validations
-                    (test_fingerprint, file_path, validation_stage, validation_timestamp)
-                    VALUES (?, ?, ?, ?)
+                    (test_fingerprint, test_file_path, file_path, validation_stage, validation_timestamp)
+                    VALUES (?, ?, ?, ?, ?)
                 """,
-                    (fingerprint, test_file, "design", datetime.now().isoformat()),
+                    (fingerprint, test_file, test_file, "design", datetime.now().isoformat()),
                 )
                 conn.commit()
 
@@ -244,7 +244,7 @@ def test_user_permissions():
                 cursor = conn.cursor()
                 cursor.execute(
                     """
-                    SELECT validation_stage, file_path FROM test_validations
+                    SELECT validation_stage, test_file_path FROM test_validations
                     WHERE test_fingerprint = ?
                 """,
                     (fingerprint,),
@@ -252,8 +252,8 @@ def test_user_permissions():
                 result = cursor.fetchone()
 
                 assert result is not None
-                current_stage, file_path = result
-                assert current_stage == "implementation"
+                validation_stage, file_path = result
+                assert validation_stage == "implementation"
                 assert file_path == test_file
 
         finally:
@@ -290,10 +290,10 @@ def test_user_permissions():
                         cursor.execute(
                             """
                             INSERT INTO test_validations
-                            (test_fingerprint, file_path, validation_stage)
-                            VALUES (?, ?, ?)
+                            (test_fingerprint, test_file_path, file_path, validation_stage)
+                            VALUES (?, ?, ?, ?)
                         """,
-                            (fingerprint, filename, "design"),
+                            (fingerprint, filename, filename, "design"),
                         )
                         conn.commit()
 
@@ -357,10 +357,10 @@ def test_user_permissions():
                 cursor.execute(
                     """
                     INSERT INTO test_validations
-                    (test_fingerprint, file_path, validation_stage)
-                    VALUES (?, ?, ?)
+                    (test_fingerprint, test_file_path, file_path, validation_stage)
+                    VALUES (?, ?, ?, ?)
                 """,
-                    (fingerprint, filename, "design"),
+                    (fingerprint, filename, filename, "design"),
                 )
 
                 # Generate token (this should work within transaction)
@@ -533,10 +533,10 @@ class User:
                 cursor.execute(
                     """
                     INSERT INTO test_validations
-                    (test_fingerprint, file_path, validation_stage, gemini_analysis)
-                    VALUES (?, ?, ?, ?)
+                    (test_fingerprint, test_file_path, file_path, validation_stage, gemini_analysis)
+                    VALUES (?, ?, ?, ?, ?)
                 """,
-                    (fingerprint, filename, "design", str(metadata)),
+                    (fingerprint, filename, filename, "design", str(metadata)),
                 )
                 conn.commit()
 

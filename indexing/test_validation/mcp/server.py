@@ -85,6 +85,7 @@ class TestValidationMCPServer:
 
         # Validate database path is accessible
         import pathlib
+
         try:
             db_file = pathlib.Path(db_path)
             parent_dir = db_file.parent
@@ -124,21 +125,15 @@ class TestValidationMCPServer:
                 "inputSchema": {
                     "type": "object",
                     "properties": {
-                        "test_content": {
-                            "type": "string",
-                            "description": "The test code content to validate"
-                        },
-                        "test_file_path": {
-                            "type": "string",
-                            "description": "Path to the test file"
-                        },
+                        "test_content": {"type": "string", "description": "The test code content to validate"},
+                        "test_file_path": {"type": "string", "description": "Path to the test file"},
                         "requirements": {
                             "type": "string",
-                            "description": "Requirements or user story that test should validate"
-                        }
+                            "description": "Requirements or user story that test should validate",
+                        },
                     },
-                    "required": ["test_content", "test_file_path", "requirements"]
-                }
+                    "required": ["test_content", "test_file_path", "requirements"],
+                },
             },
             {
                 "name": "validate_implementation",
@@ -146,21 +141,12 @@ class TestValidationMCPServer:
                 "inputSchema": {
                     "type": "object",
                     "properties": {
-                        "test_fingerprint": {
-                            "type": "string",
-                            "description": "Unique fingerprint of the test"
-                        },
-                        "implementation_code": {
-                            "type": "string",
-                            "description": "The implemented test code"
-                        },
-                        "design_token": {
-                            "type": "string",
-                            "description": "Token from approved design phase"
-                        }
+                        "test_fingerprint": {"type": "string", "description": "Unique fingerprint of the test"},
+                        "implementation_code": {"type": "string", "description": "The implemented test code"},
+                        "design_token": {"type": "string", "description": "Token from approved design phase"},
                     },
-                    "required": ["test_fingerprint", "implementation_code", "design_token"]
-                }
+                    "required": ["test_fingerprint", "implementation_code", "design_token"],
+                },
             },
             {
                 "name": "verify_breaking_behavior",
@@ -168,22 +154,19 @@ class TestValidationMCPServer:
                 "inputSchema": {
                     "type": "object",
                     "properties": {
-                        "test_fingerprint": {
-                            "type": "string",
-                            "description": "Unique fingerprint of the test"
-                        },
+                        "test_fingerprint": {"type": "string", "description": "Unique fingerprint of the test"},
                         "breaking_scenarios": {
                             "type": "array",
                             "description": "Scenarios where test should fail",
-                            "items": {"type": "string"}
+                            "items": {"type": "string"},
                         },
                         "implementation_token": {
                             "type": "string",
-                            "description": "Token from approved implementation phase"
-                        }
+                            "description": "Token from approved implementation phase",
+                        },
                     },
-                    "required": ["test_fingerprint", "breaking_scenarios", "implementation_token"]
-                }
+                    "required": ["test_fingerprint", "breaking_scenarios", "implementation_token"],
+                },
             },
             {
                 "name": "approve_test",
@@ -191,22 +174,16 @@ class TestValidationMCPServer:
                 "inputSchema": {
                     "type": "object",
                     "properties": {
-                        "test_fingerprint": {
-                            "type": "string",
-                            "description": "Unique fingerprint of the test"
-                        },
-                        "approval_notes": {
-                            "type": "string",
-                            "description": "Notes about the approval decision"
-                        },
+                        "test_fingerprint": {"type": "string", "description": "Unique fingerprint of the test"},
+                        "approval_notes": {"type": "string", "description": "Notes about the approval decision"},
                         "breaking_token": {
                             "type": "string",
-                            "description": "Token from approved breaking behavior phase"
-                        }
+                            "description": "Token from approved breaking behavior phase",
+                        },
                     },
-                    "required": ["test_fingerprint", "approval_notes", "breaking_token"]
-                }
-            }
+                    "required": ["test_fingerprint", "approval_notes", "breaking_token"],
+                },
+            },
         ]
 
     def initialize(self, params: Dict[str, Any]) -> Dict[str, Any]:
@@ -221,14 +198,8 @@ class TestValidationMCPServer:
         with self._lock:
             return {
                 "protocolVersion": self.PROTOCOL_VERSION,
-                "capabilities": {
-                    "tools": {},
-                    "logging": {}
-                },
-                "serverInfo": {
-                    "name": "test-validation-mcp",
-                    "version": "0.1.0"
-                }
+                "capabilities": {"tools": {}, "logging": {}},
+                "serverInfo": {"name": "test-validation-mcp", "version": "0.1.0"},
             }
 
     def list_tools(self) -> List[Dict[str, Any]]:
@@ -329,31 +300,40 @@ class TestValidationMCPServer:
             current_time = datetime.now().isoformat()
 
             # Map validation result to database status
-            status_mapping = {
-                "approved": "APPROVED",
-                "rejected": "REJECTED",
-                "needs_revision": "PENDING"
-            }
+            status_mapping = {"approved": "APPROVED", "rejected": "REJECTED", "needs_revision": "PENDING"}
             db_status = status_mapping.get(validation_result, "PENDING")
 
-            cursor.execute("""
+            cursor.execute(
+                """
                 INSERT OR REPLACE INTO test_validations
-                (test_fingerprint, test_file_path, current_stage, status, gemini_analysis,
+                (test_fingerprint, test_file_path, file_path, validation_stage, status, gemini_analysis,
                  validation_timestamp, created_at, updated_at, metadata, user_value_statement)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (
-                fingerprint, test_file_path, "design",
-                db_status, gemini_analysis,
-                current_time, current_time, current_time,
-                str(metadata), requirements
-            ))
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+                (
+                    fingerprint,
+                    test_file_path,
+                    test_file_path,
+                    "design",
+                    db_status,
+                    gemini_analysis,
+                    current_time,
+                    current_time,
+                    current_time,
+                    str(metadata),
+                    requirements,
+                ),
+            )
 
             # Record validation history
-            cursor.execute("""
+            cursor.execute(
+                """
                 INSERT INTO validation_history
                 (test_fingerprint, stage, validation_result, validated_at, validator_id)
                 VALUES (?, ?, ?, ?, ?)
-            """, (fingerprint, "design", validation_result, current_time, "gemini_ai"))
+            """,
+                (fingerprint, "design", validation_result, current_time, "gemini_ai"),
+            )
 
         # Record API usage for cost tracking
         self._record_api_usage(
@@ -361,7 +341,7 @@ class TestValidationMCPServer:
             operation="design_test",
             input_tokens=len(test_content.split()) + len(requirements.split()),
             output_tokens=len(gemini_analysis.split()),
-            analysis_time=analysis_time
+            analysis_time=analysis_time,
         )
 
         return {
@@ -370,7 +350,7 @@ class TestValidationMCPServer:
             "design_token": design_token,
             "gemini_analysis": gemini_analysis,
             "recommendations": recommendations,
-            "metadata": metadata
+            "metadata": metadata,
         }
 
     def _analyze_test_design(self, test_content: str, requirements: str, metadata: dict) -> tuple:
@@ -416,6 +396,7 @@ Respond in JSON format:
 
             # Parse JSON response
             import json
+
             result = json.loads(response_text)
 
             validation_result = result.get("assessment", "needs_revision")
@@ -427,7 +408,7 @@ Respond in JSON format:
         except Exception as e:
             self.logger.warning(f"Gemini analysis failed: {e}, using fallback")
             # Fallback analysis (make it longer and more comprehensive)
-            has_asserts = 'assert' in test_content
+            has_asserts = "assert" in test_content
             has_docstring = '"""' in test_content or "'''" in test_content
             req_words = requirements.lower().split()[:5]
             alignment_score = sum(1 for word in req_words if word in test_content.lower())
@@ -443,20 +424,26 @@ Best Practices: {'The test follows basic testing patterns' if has_asserts else '
 
 Recommendations: This analysis was generated using fallback logic due to AI service unavailability. For comprehensive analysis, ensure proper API connectivity."""
 
-            return analysis, "needs_revision", [
-                "Add more comprehensive assertions to verify all requirement aspects",
-                "Include edge case and error condition testing",
-                "Ensure test follows naming and documentation conventions",
-                "Consider adding setup and teardown if needed"
-            ]
+            return (
+                analysis,
+                "needs_revision",
+                [
+                    "Add more comprehensive assertions to verify all requirement aspects",
+                    "Include edge case and error condition testing",
+                    "Ensure test follows naming and documentation conventions",
+                    "Consider adding setup and teardown if needed",
+                ],
+            )
 
-    def _record_api_usage(self, service: str, operation: str, input_tokens: int, output_tokens: int, analysis_time: float):
+    def _record_api_usage(
+        self, service: str, operation: str, input_tokens: int, output_tokens: int, analysis_time: float
+    ):
         """Record API usage for cost tracking."""
         from datetime import datetime
 
         # Estimate cost in cents (rough approximation for Gemini)
         cost_per_input_token = 0.000075  # $0.000075 per input token
-        cost_per_output_token = 0.0003   # $0.0003 per output token
+        cost_per_output_token = 0.0003  # $0.0003 per output token
 
         estimated_cost_dollars = (input_tokens * cost_per_input_token) + (output_tokens * cost_per_output_token)
         cost_cents = int(estimated_cost_dollars * 100)
@@ -464,21 +451,26 @@ Recommendations: This analysis was generated using fallback logic due to AI serv
         try:
             with self.db_manager.get_db_connection() as conn:
                 cursor = conn.cursor()
-                cursor.execute("""
+                cursor.execute(
+                    """
                     INSERT INTO api_usage
                     (timestamp, service, operation, input_tokens, output_tokens, cost_cents)
                     VALUES (?, ?, ?, ?, ?, ?)
-                """, (
-                    datetime.now().isoformat(),
-                    service, operation, input_tokens, output_tokens, cost_cents
-                ))
+                """,
+                    (datetime.now().isoformat(), service, operation, input_tokens, output_tokens, cost_cents),
+                )
                 conn.commit()
         except Exception as e:
             self.logger.warning(f"Failed to record API usage: {e}")
 
-    def _analyze_implementation_vs_design(self, implementation_code: str, original_analysis: str,
-                                        requirements: str, design_metadata: dict,
-                                        impl_metadata: dict) -> tuple:
+    def _analyze_implementation_vs_design(
+        self,
+        implementation_code: str,
+        original_analysis: str,
+        requirements: str,
+        design_metadata: dict,
+        impl_metadata: dict,
+    ) -> tuple:
         """Analyze implementation against approved design using Gemini AI."""
         prompt = f"""
 Compare this test implementation against the approved design and analyze alignment.
@@ -531,6 +523,7 @@ Respond in JSON format:
 
             # Parse JSON response
             import json
+
             result = json.loads(response_text)
 
             validation_result = result.get("assessment", "needs_revision")
@@ -544,19 +537,19 @@ Respond in JSON format:
             self.logger.warning(f"Gemini implementation analysis failed: {e}, using fallback")
 
             # Fallback analysis comparing implementation to design
-            impl_functions = impl_metadata.get('functions', [])
-            design_functions = design_metadata.get('functions', [])
+            impl_functions = impl_metadata.get("functions", [])
+            design_functions = design_metadata.get("functions", [])
 
             # Check for significant changes
             added_functions = set(impl_functions) - set(design_functions)
             removed_functions = set(design_functions) - set(impl_functions)
 
-            has_assertions = 'assert' in implementation_code
-            has_imports = len(impl_metadata.get('imports', [])) > 0
-            has_classes = len(impl_metadata.get('classes', [])) > 0
+            has_assertions = "assert" in implementation_code
+            has_imports = len(impl_metadata.get("imports", [])) > 0
+            has_classes = len(impl_metadata.get("classes", [])) > 0
 
             # Analyze complexity changes
-            impl_lines = len(implementation_code.split('\n'))
+            impl_lines = len(implementation_code.split("\n"))
             complexity_assessment = "enhanced" if impl_lines > 20 else "moderate" if impl_lines > 10 else "simple"
 
             analysis = f"""Fallback Implementation vs Design Analysis:
@@ -586,17 +579,23 @@ Recommendations: This analysis was generated using fallback logic due to AI serv
             else:
                 result = "approved"  # Reasonable implementation
 
-            return analysis, result, [
-                "Verify all original design requirements are met",
-                "Ensure new functionality adds genuine value",
-                "Consider implementation complexity vs test effectiveness",
-                "Validate that enhancements don't reduce test clarity"
-            ], design_comparison
+            return (
+                analysis,
+                result,
+                [
+                    "Verify all original design requirements are met",
+                    "Ensure new functionality adds genuine value",
+                    "Consider implementation complexity vs test effectiveness",
+                    "Validate that enhancements don't reduce test clarity",
+                ],
+                design_comparison,
+            )
 
-    def _analyze_breaking_scenarios(self, breaking_scenarios: list, implementation_code: str,
-                                  requirements: str, metadata: dict) -> tuple:
+    def _analyze_breaking_scenarios(
+        self, breaking_scenarios: list, implementation_code: str, requirements: str, metadata: dict
+    ) -> tuple:
         """Analyze breaking scenarios using Gemini AI."""
-        scenarios_text = '\n'.join(f"{i+1}. {scenario}" for i, scenario in enumerate(breaking_scenarios))
+        scenarios_text = "\n".join(f"{i+1}. {scenario}" for i, scenario in enumerate(breaking_scenarios))
 
         prompt = f"""
 Analyze these breaking behavior scenarios for a test implementation.
@@ -651,6 +650,7 @@ Respond in JSON format:
 
             # Parse JSON response
             import json
+
             result = json.loads(response_text)
 
             validation_result = result.get("assessment", "needs_revision")
@@ -668,10 +668,10 @@ Respond in JSON format:
             avg_length = sum(len(s) for s in breaking_scenarios) / scenario_count if scenario_count > 0 else 0
 
             # Check for common keywords that indicate good breaking scenarios
-            good_keywords = ['fail', 'error', 'invalid', 'empty', 'null', 'missing', 'wrong', 'unauthorized']
-            keyword_coverage = sum(1 for scenario in breaking_scenarios
-                                 for keyword in good_keywords
-                                 if keyword in scenario.lower())
+            good_keywords = ["fail", "error", "invalid", "empty", "null", "missing", "wrong", "unauthorized"]
+            keyword_coverage = sum(
+                1 for scenario in breaking_scenarios for keyword in good_keywords if keyword in scenario.lower()
+            )
 
             # Analyze scenario quality
             quality_score = min(keyword_coverage / max(scenario_count, 1), 1.0)
@@ -693,14 +693,17 @@ Recommendations: This analysis was generated using fallback logic due to AI serv
             scenario_results = []
             for scenario in breaking_scenarios:
                 has_failure_keywords = any(keyword in scenario.lower() for keyword in good_keywords)
-                is_specific = len(scenario) > 20 and any(word in scenario.lower()
-                                                       for word in ['should', 'when', 'if', 'with'])
+                is_specific = len(scenario) > 20 and any(
+                    word in scenario.lower() for word in ["should", "when", "if", "with"]
+                )
 
-                scenario_results.append({
-                    "scenario": scenario,
-                    "analysis": f"{'Good scenario with clear failure conditions' if has_failure_keywords and is_specific else 'Consider making scenario more specific about failure conditions'}",
-                    "expected_failure": has_failure_keywords
-                })
+                scenario_results.append(
+                    {
+                        "scenario": scenario,
+                        "analysis": f"{'Good scenario with clear failure conditions' if has_failure_keywords and is_specific else 'Consider making scenario more specific about failure conditions'}",
+                        "expected_failure": has_failure_keywords,
+                    }
+                )
 
             # Determine overall result
             if quality_score >= 0.8 and scenario_count >= 3:
@@ -710,24 +713,37 @@ Recommendations: This analysis was generated using fallback logic due to AI serv
             else:
                 result = "rejected"
 
-            return analysis, result, [
-                "Ensure scenarios are specific and testable",
-                "Include scenarios for input validation edge cases",
-                "Add scenarios for authentication and authorization failures",
-                "Consider boundary conditions and error handling scenarios"
-            ], scenario_results
+            return (
+                analysis,
+                result,
+                [
+                    "Ensure scenarios are specific and testable",
+                    "Include scenarios for input validation edge cases",
+                    "Add scenarios for authentication and authorization failures",
+                    "Consider boundary conditions and error handling scenarios",
+                ],
+                scenario_results,
+            )
 
-    def _generate_approval_summary(self, approval_notes: str, design_analysis: str,
-                                 impl_analysis: str, breaking_analysis: str,
-                                 requirements: str, metadata: dict,
-                                 created_at: str, updated_at: str) -> tuple:
+    def _generate_approval_summary(
+        self,
+        approval_notes: str,
+        design_analysis: str,
+        impl_analysis: str,
+        breaking_analysis: str,
+        requirements: str,
+        metadata: dict,
+        created_at: str,
+        updated_at: str,
+    ) -> tuple:
         """Generate comprehensive approval summary for the entire validation workflow."""
 
         # Calculate workflow duration
         try:
             from datetime import datetime
-            created = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
-            updated = datetime.fromisoformat(updated_at.replace('Z', '+00:00'))
+
+            created = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
+            updated = datetime.fromisoformat(updated_at.replace("Z", "+00:00"))
             duration = updated - created
             workflow_duration = f"{duration.days} days, {duration.seconds // 3600} hours"
         except:
@@ -749,7 +765,9 @@ Recommendations: This analysis was generated using fallback logic due to AI serv
         breaking_quality = "thorough" if breaking_analysis and len(breaking_analysis) > 100 else "adequate"
 
         # Analyze approval notes quality
-        notes_quality = "comprehensive" if len(approval_notes) > 100 else "standard" if len(approval_notes) > 30 else "minimal"
+        notes_quality = (
+            "comprehensive" if len(approval_notes) > 100 else "standard" if len(approval_notes) > 30 else "minimal"
+        )
 
         # Generate comprehensive summary
         approval_summary = f"""VALIDATION WORKFLOW COMPLETE - FINAL APPROVAL SUMMARY
@@ -799,22 +817,28 @@ This test has successfully completed the full validation workflow and is approve
         if notes_quality == "minimal":
             final_recommendations.append("Consider adding more detailed approval documentation for future reference")
 
-        if len(metadata.get('functions', [])) == 1:
-            final_recommendations.append("Consider expanding test coverage with additional test functions for comprehensive validation")
+        if len(metadata.get("functions", [])) == 1:
+            final_recommendations.append(
+                "Consider expanding test coverage with additional test functions for comprehensive validation"
+            )
 
         if design_quality == "basic":
             final_recommendations.append("Future tests could benefit from more detailed design validation analysis")
 
         if breaking_quality == "adequate":
-            final_recommendations.append("Consider adding more comprehensive breaking scenarios for enhanced failure testing")
+            final_recommendations.append(
+                "Consider adding more comprehensive breaking scenarios for enhanced failure testing"
+            )
 
         # Always include standard maintenance recommendations
-        final_recommendations.extend([
-            "Monitor test performance in production environment",
-            "Update test validation as requirements evolve",
-            "Maintain approval token security for production deployment",
-            "Document test execution results for continuous improvement"
-        ])
+        final_recommendations.extend(
+            [
+                "Monitor test performance in production environment",
+                "Update test validation as requirements evolve",
+                "Maintain approval token security for production deployment",
+                "Document test execution results for continuous improvement",
+            ]
+        )
 
         return approval_summary, final_recommendations
 
@@ -867,10 +891,13 @@ This test has successfully completed the full validation workflow and is approve
         # Retrieve original design from database
         with self.db_manager.get_db_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT test_file_path, gemini_analysis, user_value_statement, metadata, status
                 FROM test_validations WHERE test_fingerprint = ?
-            """, (test_fingerprint,))
+            """,
+                (test_fingerprint,),
+            )
             design_row = cursor.fetchone()
 
             if not design_row:
@@ -884,6 +911,7 @@ This test has successfully completed the full validation workflow and is approve
         # Parse metadata
         try:
             import ast as ast_parser
+
             metadata = ast_parser.literal_eval(metadata_str) if metadata_str else {}
         except:
             metadata = {}
@@ -907,30 +935,29 @@ This test has successfully completed the full validation workflow and is approve
             current_time = datetime.now().isoformat()
 
             # Map validation result to database status
-            status_mapping = {
-                "approved": "APPROVED",
-                "rejected": "REJECTED",
-                "needs_revision": "PENDING"
-            }
+            status_mapping = {"approved": "APPROVED", "rejected": "REJECTED", "needs_revision": "PENDING"}
             db_status = status_mapping.get(validation_result, "PENDING")
 
             # Update test validation record
-            cursor.execute("""
+            cursor.execute(
+                """
                 UPDATE test_validations
-                SET current_stage = ?, status = ?, updated_at = ?,
+                SET validation_stage = ?, status = ?, updated_at = ?,
                     implementation_code = ?, implementation_analysis = ?
                 WHERE test_fingerprint = ?
-            """, (
-                "implementation", db_status, current_time,
-                implementation_code, gemini_analysis, test_fingerprint
-            ))
+            """,
+                ("implementation", db_status, current_time, implementation_code, gemini_analysis, test_fingerprint),
+            )
 
             # Record validation history
-            cursor.execute("""
+            cursor.execute(
+                """
                 INSERT INTO validation_history
                 (test_fingerprint, stage, validation_result, validated_at, validator_id)
                 VALUES (?, ?, ?, ?, ?)
-            """, (test_fingerprint, "implementation", validation_result, current_time, "gemini_ai"))
+            """,
+                (test_fingerprint, "implementation", validation_result, current_time, "gemini_ai"),
+            )
 
         # Record API usage for cost tracking
         self._record_api_usage(
@@ -938,7 +965,7 @@ This test has successfully completed the full validation workflow and is approve
             operation="validate_implementation",
             input_tokens=len(implementation_code.split()) + len(original_analysis.split()),
             output_tokens=len(gemini_analysis.split()),
-            analysis_time=analysis_time
+            analysis_time=analysis_time,
         )
 
         return {
@@ -948,7 +975,7 @@ This test has successfully completed the full validation workflow and is approve
             "design_comparison": design_comparison,
             "recommendations": recommendations,
             "test_fingerprint": test_fingerprint,
-            "metadata": impl_metadata
+            "metadata": impl_metadata,
         }
 
     def _handle_verify_breaking_behavior(self, args: Dict[str, Any]) -> Dict[str, Any]:
@@ -997,11 +1024,14 @@ This test has successfully completed the full validation workflow and is approve
         # Retrieve implementation data from database
         with self.db_manager.get_db_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT test_file_path, implementation_code, implementation_analysis,
                        user_value_statement, metadata, status
                 FROM test_validations WHERE test_fingerprint = ?
-            """, (test_fingerprint,))
+            """,
+                (test_fingerprint,),
+            )
             impl_row = cursor.fetchone()
 
             if not impl_row:
@@ -1015,6 +1045,7 @@ This test has successfully completed the full validation workflow and is approve
         # Parse metadata
         try:
             import ast as ast_parser
+
             metadata = ast_parser.literal_eval(metadata_str) if metadata_str else {}
         except:
             metadata = {}
@@ -1035,38 +1066,37 @@ This test has successfully completed the full validation workflow and is approve
             current_time = datetime.now().isoformat()
 
             # Map validation result to database status
-            status_mapping = {
-                "approved": "APPROVED",
-                "rejected": "REJECTED",
-                "needs_revision": "PENDING"
-            }
+            status_mapping = {"approved": "APPROVED", "rejected": "REJECTED", "needs_revision": "PENDING"}
             db_status = status_mapping.get(validation_result, "PENDING")
 
             # Update test validation record
-            cursor.execute("""
+            cursor.execute(
+                """
                 UPDATE test_validations
-                SET current_stage = ?, status = ?, updated_at = ?,
+                SET validation_stage = ?, status = ?, updated_at = ?,
                     breaking_scenarios = ?, breaking_analysis = ?
                 WHERE test_fingerprint = ?
-            """, (
-                "breaking", db_status, current_time,
-                str(breaking_scenarios), breaking_analysis, test_fingerprint
-            ))
+            """,
+                ("breaking", db_status, current_time, str(breaking_scenarios), breaking_analysis, test_fingerprint),
+            )
 
             # Record validation history
-            cursor.execute("""
+            cursor.execute(
+                """
                 INSERT INTO validation_history
                 (test_fingerprint, stage, validation_result, validated_at, validator_id)
                 VALUES (?, ?, ?, ?, ?)
-            """, (test_fingerprint, "breaking", validation_result, current_time, "gemini_ai"))
+            """,
+                (test_fingerprint, "breaking", validation_result, current_time, "gemini_ai"),
+            )
 
         # Record API usage for cost tracking
         self._record_api_usage(
             service="gemini",
             operation="verify_breaking_behavior",
-            input_tokens=len(' '.join(breaking_scenarios).split()) + len(implementation_code.split()),
+            input_tokens=len(" ".join(breaking_scenarios).split()) + len(implementation_code.split()),
             output_tokens=len(breaking_analysis.split()),
-            analysis_time=analysis_time
+            analysis_time=analysis_time,
         )
 
         return {
@@ -1075,7 +1105,7 @@ This test has successfully completed the full validation workflow and is approve
             "breaking_analysis": breaking_analysis,
             "scenario_results": scenario_results,
             "recommendations": recommendations,
-            "test_fingerprint": test_fingerprint
+            "test_fingerprint": test_fingerprint,
         }
 
     def _handle_approve_test(self, args: Dict[str, Any]) -> Dict[str, Any]:
@@ -1120,12 +1150,15 @@ This test has successfully completed the full validation workflow and is approve
         # Retrieve complete validation data from database
         with self.db_manager.get_db_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT test_file_path, gemini_analysis, implementation_analysis,
                        breaking_analysis, user_value_statement, metadata, status,
                        created_at, updated_at
                 FROM test_validations WHERE test_fingerprint = ?
-            """, (test_fingerprint,))
+            """,
+                (test_fingerprint,),
+            )
             validation_row = cursor.fetchone()
 
             if not validation_row:
@@ -1134,12 +1167,22 @@ This test has successfully completed the full validation workflow and is approve
             if validation_row[6] not in ["APPROVED", "PENDING"]:  # status
                 raise ValueError("Breaking behavior must be approved before final approval")
 
-        (test_file_path, design_analysis, impl_analysis, breaking_analysis,
-         requirements, metadata_str, current_status, created_at, updated_at) = validation_row
+        (
+            test_file_path,
+            design_analysis,
+            impl_analysis,
+            breaking_analysis,
+            requirements,
+            metadata_str,
+            current_status,
+            created_at,
+            updated_at,
+        ) = validation_row
 
         # Parse metadata
         try:
             import ast as ast_parser
+
             metadata = ast_parser.literal_eval(metadata_str) if metadata_str else {}
         except:
             metadata = {}
@@ -1147,8 +1190,14 @@ This test has successfully completed the full validation workflow and is approve
         # Generate comprehensive approval summary
         start_time = time.time()
         approval_summary, final_recommendations = self._generate_approval_summary(
-            approval_notes, design_analysis, impl_analysis, breaking_analysis,
-            requirements, metadata, created_at, updated_at
+            approval_notes,
+            design_analysis,
+            impl_analysis,
+            breaking_analysis,
+            requirements,
+            metadata,
+            created_at,
+            updated_at,
         )
         analysis_time = time.time() - start_time
 
@@ -1161,41 +1210,45 @@ This test has successfully completed the full validation workflow and is approve
             current_time = datetime.now().isoformat()
 
             # Update main test validation record to final approved state
-            cursor.execute("""
+            cursor.execute(
+                """
                 UPDATE test_validations
-                SET current_stage = ?, status = ?, updated_at = ?,
+                SET validation_stage = ?, status = ?, updated_at = ?,
                     approval_token = ?, approval_notes = ?
                 WHERE test_fingerprint = ?
-            """, (
-                "approval", "APPROVED", current_time,
-                approval_token, approval_notes, test_fingerprint
-            ))
+            """,
+                ("approval", "APPROVED", current_time, approval_token, approval_notes, test_fingerprint),
+            )
 
             # Record validation history for approval stage
-            cursor.execute("""
+            cursor.execute(
+                """
                 INSERT INTO validation_history
                 (test_fingerprint, stage, validation_result, validated_at, validator_id)
                 VALUES (?, ?, ?, ?, ?)
-            """, (test_fingerprint, "approval", "approved", current_time, "gemini_ai"))
+            """,
+                (test_fingerprint, "approval", "approved", current_time, "gemini_ai"),
+            )
 
             # Store approval token in approval_tokens table
-            cursor.execute("""
+            cursor.execute(
+                """
                 INSERT INTO approval_tokens
                 (test_fingerprint, approval_token, approved_by, approved_at,
                  stage, issued_timestamp, status)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
-            """, (
-                test_fingerprint, approval_token, "gemini_ai", current_time,
-                "approval", current_time, "VALID"
-            ))
+            """,
+                (test_fingerprint, approval_token, "gemini_ai", current_time, "approval", current_time, "VALID"),
+            )
 
         # Record API usage for cost tracking (minimal for approval summary generation)
         self._record_api_usage(
             service="internal",
             operation="approve_test",
-            input_tokens=len(approval_notes.split()) + len(' '.join([design_analysis or '', impl_analysis or '', breaking_analysis or '']).split()),
+            input_tokens=len(approval_notes.split())
+            + len(" ".join([design_analysis or "", impl_analysis or "", breaking_analysis or ""]).split()),
             output_tokens=len(approval_summary.split()),
-            analysis_time=analysis_time
+            analysis_time=analysis_time,
         )
 
         return {
@@ -1204,7 +1257,7 @@ This test has successfully completed the full validation workflow and is approve
             "approval_summary": approval_summary,
             "final_recommendations": final_recommendations,
             "validation_complete": True,
-            "test_fingerprint": test_fingerprint
+            "test_fingerprint": test_fingerprint,
         }
 
     def shutdown(self):
@@ -1214,6 +1267,6 @@ This test has successfully completed the full validation workflow and is approve
             self.logger.info("Test Validation MCP Server shutting down")
 
             # Verify database connections are cleaned up
-            if hasattr(self.db_manager, '_active_connections'):
+            if hasattr(self.db_manager, "_active_connections"):
                 # Force cleanup of any remaining connections
                 pass

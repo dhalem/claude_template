@@ -33,7 +33,7 @@ class TestApproveTestTool:
     def setup_method(self):
         """Setup test environment for each test."""
         # Create temporary database file
-        tmp_file = tempfile.NamedTemporaryFile(suffix='.db', delete=False)
+        tmp_file = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
         self.db_path = tmp_file.name
         tmp_file.close()
 
@@ -44,19 +44,19 @@ class TestApproveTestTool:
         self.config.set("validation_stages", ["design", "implementation", "breaking", "approval"])
 
         # Set required environment variable for testing
-        os.environ['GEMINI_API_KEY'] = 'test_api_key_for_integration_testing'
+        os.environ["GEMINI_API_KEY"] = "test_api_key_for_integration_testing"
 
         # Create server
         self.server = TestValidationMCPServer(config=self.config)
 
     def teardown_method(self):
         """Cleanup test environment after each test."""
-        if hasattr(self, 'db_path') and os.path.exists(self.db_path):
+        if hasattr(self, "db_path") and os.path.exists(self.db_path):
             os.unlink(self.db_path)
 
         # Clean up environment variable
-        if 'GEMINI_API_KEY' in os.environ:
-            del os.environ['GEMINI_API_KEY']
+        if "GEMINI_API_KEY" in os.environ:
+            del os.environ["GEMINI_API_KEY"]
 
     def _create_approved_breaking_behavior(self):
         """Helper to create an approved breaking behavior validation for testing."""
@@ -72,7 +72,7 @@ def test_final_approval():
     assert result.timestamp is not None
 """,
             "test_file_path": "test_final_approval.py",
-            "requirements": "System should process data with key-value pairs and status. Processing should return success with original data and timestamp."
+            "requirements": "System should process data with key-value pairs and status. Processing should return success with original data and timestamp.",
         }
 
         design_result = self.server.call_tool("design_test", design_params)
@@ -102,7 +102,7 @@ class ProcessResult:
         self.data = data
         self.timestamp = timestamp
 """,
-            "design_token": design_token
+            "design_token": design_token,
         }
 
         impl_result = self.server.call_tool("validate_implementation", impl_params)
@@ -114,9 +114,9 @@ class ProcessResult:
             "breaking_scenarios": [
                 "Processing should fail when data is None or empty",
                 "Processing should fail when required keys are missing",
-                "Processing should fail when data format is invalid"
+                "Processing should fail when data format is invalid",
             ],
-            "implementation_token": implementation_token
+            "implementation_token": implementation_token,
         }
 
         breaking_result = self.server.call_tool("verify_breaking_behavior", breaking_params)
@@ -152,7 +152,7 @@ class ProcessResult:
         approve_params = {
             "test_fingerprint": fingerprint,
             "approval_notes": "Test has been thoroughly validated through all stages. Ready for production use.",
-            "breaking_token": breaking_token
+            "breaking_token": breaking_token,
         }
 
         # This should work (not raise NotImplementedError anymore)
@@ -174,7 +174,7 @@ class ProcessResult:
         valid_params = {
             "test_fingerprint": fingerprint,
             "approval_notes": "Approved after thorough validation",
-            "breaking_token": breaking_token
+            "breaking_token": breaking_token,
         }
 
         result = self.server.call_tool("approve_test", valid_params)
@@ -184,7 +184,7 @@ class ProcessResult:
         invalid_params = {
             "test_fingerprint": fingerprint,
             "approval_notes": "Attempted approval with invalid token",
-            "breaking_token": "invalid_token_123"
+            "breaking_token": "invalid_token_123",
         }
 
         with pytest.raises(ValueError, match="Invalid or expired breaking token"):
@@ -197,7 +197,7 @@ class ProcessResult:
         approve_params = {
             "test_fingerprint": fingerprint,
             "approval_notes": "Final approval granted after comprehensive validation",
-            "breaking_token": breaking_token
+            "breaking_token": breaking_token,
         }
 
         result = self.server.call_tool("approve_test", approve_params)
@@ -205,10 +205,13 @@ class ProcessResult:
         # Verify data was updated in database
         with self.server.db_manager.get_db_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("""
-                SELECT current_stage, status, updated_at, approval_token
+            cursor.execute(
+                """
+                SELECT validation_stage, status, updated_at, approval_token
                 FROM test_validations WHERE test_fingerprint = ?
-            """, (fingerprint,))
+            """,
+                (fingerprint,),
+            )
             row = cursor.fetchone()
 
             assert row is not None
@@ -224,7 +227,7 @@ class ProcessResult:
         approve_params = {
             "test_fingerprint": fingerprint,
             "approval_notes": "Test approved for production deployment",
-            "breaking_token": breaking_token
+            "breaking_token": breaking_token,
         }
 
         result = self.server.call_tool("approve_test", approve_params)
@@ -245,7 +248,7 @@ class ProcessResult:
         approve_params = {
             "test_fingerprint": fingerprint,
             "approval_notes": "Comprehensive validation completed successfully. Test demonstrates proper functionality and failure handling.",
-            "breaking_token": breaking_token
+            "breaking_token": breaking_token,
         }
 
         result = self.server.call_tool("approve_test", approve_params)
@@ -256,9 +259,7 @@ class ProcessResult:
 
         # Should mention key concepts
         summary_lower = summary.lower()
-        assert any(keyword in summary_lower for keyword in [
-            "approval", "validation", "complete", "test", "stage"
-        ])
+        assert any(keyword in summary_lower for keyword in ["approval", "validation", "complete", "test", "stage"])
 
     def test_approve_test_validation_complete_flag(self):
         """Test that approve_test sets validation_complete flag correctly."""
@@ -267,7 +268,7 @@ class ProcessResult:
         approve_params = {
             "test_fingerprint": fingerprint,
             "approval_notes": "All validation stages completed successfully",
-            "breaking_token": breaking_token
+            "breaking_token": breaking_token,
         }
 
         result = self.server.call_tool("approve_test", approve_params)
@@ -282,25 +283,22 @@ class ProcessResult:
 
         # Test with empty approval notes
         with pytest.raises(ValueError, match="approval_notes cannot be empty"):
-            self.server.call_tool("approve_test", {
-                "test_fingerprint": fingerprint,
-                "approval_notes": "",
-                "breaking_token": breaking_token
-            })
+            self.server.call_tool(
+                "approve_test",
+                {"test_fingerprint": fingerprint, "approval_notes": "", "breaking_token": breaking_token},
+            )
 
         # Test with missing fingerprint
         with pytest.raises(ValueError, match="Missing required parameter"):
-            self.server.call_tool("approve_test", {
-                "approval_notes": "Some approval notes",
-                "breaking_token": breaking_token
-            })
+            self.server.call_tool(
+                "approve_test", {"approval_notes": "Some approval notes", "breaking_token": breaking_token}
+            )
 
         # Test with missing breaking token
         with pytest.raises(ValueError, match="Missing required parameter"):
-            self.server.call_tool("approve_test", {
-                "test_fingerprint": fingerprint,
-                "approval_notes": "Some approval notes"
-            })
+            self.server.call_tool(
+                "approve_test", {"test_fingerprint": fingerprint, "approval_notes": "Some approval notes"}
+            )
 
     def test_approve_test_fingerprint_mismatch(self):
         """Test approve_test with mismatched fingerprints."""
@@ -310,11 +308,14 @@ class ProcessResult:
         wrong_fingerprint = "wrong_fingerprint_12345"
 
         with pytest.raises(ValueError, match="Token fingerprint mismatch"):
-            self.server.call_tool("approve_test", {
-                "test_fingerprint": wrong_fingerprint,
-                "approval_notes": "Attempted approval with mismatched fingerprint",
-                "breaking_token": breaking_token
-            })
+            self.server.call_tool(
+                "approve_test",
+                {
+                    "test_fingerprint": wrong_fingerprint,
+                    "approval_notes": "Attempted approval with mismatched fingerprint",
+                    "breaking_token": breaking_token,
+                },
+            )
 
     def test_approve_test_approval_notes_quality(self):
         """Test approve_test validates approval notes quality."""
@@ -324,18 +325,14 @@ class ProcessResult:
         good_params = {
             "test_fingerprint": fingerprint,
             "approval_notes": "Test has been thoroughly validated through all four stages: design validation confirmed requirements alignment, implementation validation verified code quality and adherence to design, breaking behavior validation confirmed proper failure handling, and all scenarios demonstrate robust test coverage. Approved for production use.",
-            "breaking_token": breaking_token
+            "breaking_token": breaking_token,
         }
 
         good_result = self.server.call_tool("approve_test", good_params)
         assert good_result["approval_result"] == "approved"
 
         # Test with minimal approval notes
-        minimal_params = {
-            "test_fingerprint": fingerprint,
-            "approval_notes": "OK",
-            "breaking_token": breaking_token
-        }
+        minimal_params = {"test_fingerprint": fingerprint, "approval_notes": "OK", "breaking_token": breaking_token}
 
         minimal_result = self.server.call_tool("approve_test", minimal_params)
         # Should still approve but may have recommendations
@@ -349,7 +346,7 @@ class ProcessResult:
         approve_params = {
             "test_fingerprint": fingerprint,
             "approval_notes": "Final approval with token tracking",
-            "breaking_token": breaking_token
+            "breaking_token": breaking_token,
         }
 
         result = self.server.call_tool("approve_test", approve_params)
@@ -358,10 +355,13 @@ class ProcessResult:
         # Verify approval token was stored in approval_tokens table
         with self.server.db_manager.get_db_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT test_fingerprint, approval_token, approved_by, stage, status
                 FROM approval_tokens WHERE test_fingerprint = ?
-            """, (fingerprint,))
+            """,
+                (fingerprint,),
+            )
             row = cursor.fetchone()
 
             assert row is not None
@@ -392,7 +392,7 @@ class ProcessResult:
                 approve_params = {
                     "test_fingerprint": fingerprint,
                     "approval_notes": f"Concurrent approval for worker {worker_id} - comprehensive validation completed successfully through all stages",
-                    "breaking_token": breaking_token
+                    "breaking_token": breaking_token,
                 }
 
                 result = self.server.call_tool("approve_test", approve_params)
@@ -433,7 +433,7 @@ class ProcessResult:
         approve_params = {
             "test_fingerprint": fingerprint,
             "approval_notes": "Final approval with cost tracking validation",
-            "breaking_token": breaking_token
+            "breaking_token": breaking_token,
         }
 
         result = self.server.call_tool("approve_test", approve_params)
@@ -453,7 +453,7 @@ class ProcessResult:
         approve_params = {
             "test_fingerprint": fingerprint,
             "approval_notes": "Comprehensive workflow validation: Design phase validated requirements alignment and test structure. Implementation phase confirmed code quality and design adherence. Breaking behavior phase verified proper failure handling and edge case coverage. All validation stages completed successfully. Test demonstrates robust functionality and comprehensive coverage. Approved for production deployment with confidence.",
-            "breaking_token": breaking_token
+            "breaking_token": breaking_token,
         }
 
         result = self.server.call_tool("approve_test", approve_params)
@@ -469,10 +469,13 @@ class ProcessResult:
             cursor = conn.cursor()
 
             # Check main validation record
-            cursor.execute("""
-                SELECT current_stage, status, approval_token
+            cursor.execute(
+                """
+                SELECT validation_stage, status, approval_token
                 FROM test_validations WHERE test_fingerprint = ?
-            """, (fingerprint,))
+            """,
+                (fingerprint,),
+            )
             validation_row = cursor.fetchone()
 
             assert validation_row[0] == "approval"  # Final stage
@@ -480,10 +483,13 @@ class ProcessResult:
             assert validation_row[2] is not None  # Approval token generated
 
             # Check validation history shows all stages
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT stage FROM validation_history
                 WHERE test_fingerprint = ? ORDER BY validated_at
-            """, (fingerprint,))
+            """,
+                (fingerprint,),
+            )
             history_stages = [row[0] for row in cursor.fetchall()]
 
             expected_stages = ["design", "implementation", "breaking", "approval"]

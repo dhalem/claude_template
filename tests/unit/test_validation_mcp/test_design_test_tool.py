@@ -34,7 +34,7 @@ class TestDesignTestTool:
     def setup_method(self):
         """Setup test environment for each test."""
         # Create temporary database file
-        tmp_file = tempfile.NamedTemporaryFile(suffix='.db', delete=False)
+        tmp_file = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
         self.db_path = tmp_file.name
         tmp_file.close()
 
@@ -45,19 +45,19 @@ class TestDesignTestTool:
         self.config.set("validation_stages", ["design", "implementation", "breaking", "approval"])
 
         # Set required environment variable for testing
-        os.environ['GEMINI_API_KEY'] = 'test_api_key_for_integration_testing'
+        os.environ["GEMINI_API_KEY"] = "test_api_key_for_integration_testing"
 
         # Create server
         self.server = TestValidationMCPServer(config=self.config)
 
     def teardown_method(self):
         """Cleanup test environment after each test."""
-        if hasattr(self, 'db_path') and os.path.exists(self.db_path):
+        if hasattr(self, "db_path") and os.path.exists(self.db_path):
             os.unlink(self.db_path)
 
         # Clean up environment variable
-        if 'GEMINI_API_KEY' in os.environ:
-            del os.environ['GEMINI_API_KEY']
+        if "GEMINI_API_KEY" in os.environ:
+            del os.environ["GEMINI_API_KEY"]
 
     def test_design_test_tool_exists(self):
         """Test that design_test tool is registered."""
@@ -100,7 +100,7 @@ def test_user_registration():
     assert user.is_active is True
 """,
             "test_file_path": "test_user_registration.py",
-            "requirements": "User should be able to register with valid username, email, and password. System should create active user account and assign unique ID."
+            "requirements": "User should be able to register with valid username, email, and password. System should create active user account and assign unique ID.",
         }
 
         # This should work (not raise NotImplementedError anymore)
@@ -119,7 +119,7 @@ def test_user_registration():
         test_params = {
             "test_content": "def test_simple(): assert True",
             "test_file_path": "test_simple.py",
-            "requirements": "Simple test to verify basic functionality"
+            "requirements": "Simple test to verify basic functionality",
         }
 
         result = self.server.call_tool("design_test", test_params)
@@ -139,7 +139,7 @@ def test_user_registration():
         test_params = {
             "test_content": "def test_database_integration(): pass",
             "test_file_path": "test_db_integration.py",
-            "requirements": "Test database integration functionality"
+            "requirements": "Test database integration functionality",
         }
 
         result = self.server.call_tool("design_test", test_params)
@@ -148,10 +148,13 @@ def test_user_registration():
         # Verify data was stored in database
         with self.server.db_manager.get_db_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("""
-                SELECT test_fingerprint, current_stage, gemini_analysis, test_file_path
+            cursor.execute(
+                """
+                SELECT test_fingerprint, validation_stage, gemini_analysis, test_file_path
                 FROM test_validations WHERE test_fingerprint = ?
-            """, (fingerprint,))
+            """,
+                (fingerprint,),
+            )
             row = cursor.fetchone()
 
             assert row is not None
@@ -165,7 +168,7 @@ def test_user_registration():
         test_params = {
             "test_content": "def test_token_generation(): pass",
             "test_file_path": "test_tokens.py",
-            "requirements": "Test token generation functionality"
+            "requirements": "Test token generation functionality",
         }
 
         result = self.server.call_tool("design_test", test_params)
@@ -193,7 +196,7 @@ def test_user_authentication():
     assert login_result.session_token is not None
 """,
             "test_file_path": "test_authentication.py",
-            "requirements": "Users should be able to authenticate with username and password. Successful authentication should return session token and user ID."
+            "requirements": "Users should be able to authenticate with username and password. Successful authentication should return session token and user ID.",
         }
 
         result = self.server.call_tool("design_test", test_params)
@@ -204,9 +207,7 @@ def test_user_authentication():
 
         # Should mention key test elements
         analysis_lower = analysis.lower()
-        assert any(keyword in analysis_lower for keyword in [
-            "authentication", "user", "test", "assert", "password"
-        ])
+        assert any(keyword in analysis_lower for keyword in ["authentication", "user", "test", "assert", "password"])
 
     def test_design_test_requirements_alignment(self):
         """Test that design_test validates alignment with requirements."""
@@ -227,7 +228,7 @@ def test_user_profile_creation():
     assert profile.created_at is not None
 """,
             "test_file_path": "test_profile_creation.py",
-            "requirements": "Users should be able to create profiles with first name, last name, and bio. Profile should have creation timestamp."
+            "requirements": "Users should be able to create profiles with first name, last name, and bio. Profile should have creation timestamp.",
         }
 
         good_result = self.server.call_tool("design_test", good_params)
@@ -239,7 +240,7 @@ def test_user_profile_creation():
         bad_params = {
             "test_content": "def test_random(): assert 1 + 1 == 2",
             "test_file_path": "test_random.py",
-            "requirements": "Users should be able to upload and manage profile photos with resize functionality."
+            "requirements": "Users should be able to upload and manage profile photos with resize functionality.",
         }
 
         bad_result = self.server.call_tool("design_test", bad_params)
@@ -251,34 +252,39 @@ def test_user_profile_creation():
         """Test design_test handles edge cases properly."""
         # Test with empty test content
         with pytest.raises(ValueError, match="test_content cannot be empty"):
-            self.server.call_tool("design_test", {
-                "test_content": "",
-                "test_file_path": "test_empty.py",
-                "requirements": "Some requirements"
-            })
+            self.server.call_tool(
+                "design_test",
+                {"test_content": "", "test_file_path": "test_empty.py", "requirements": "Some requirements"},
+            )
 
         # Test with invalid Python syntax
         with pytest.raises(ValueError, match="Invalid Python syntax"):
-            self.server.call_tool("design_test", {
-                "test_content": "def test_invalid( pass",
-                "test_file_path": "test_invalid.py",
-                "requirements": "Some requirements"
-            })
+            self.server.call_tool(
+                "design_test",
+                {
+                    "test_content": "def test_invalid( pass",
+                    "test_file_path": "test_invalid.py",
+                    "requirements": "Some requirements",
+                },
+            )
 
         # Test with missing requirements
         with pytest.raises(ValueError, match="Missing required parameter"):
-            self.server.call_tool("design_test", {
-                "test_content": "def test_no_req(): pass",
-                "test_file_path": "test_no_req.py"
-                # Missing requirements
-            })
+            self.server.call_tool(
+                "design_test",
+                {
+                    "test_content": "def test_no_req(): pass",
+                    "test_file_path": "test_no_req.py"
+                    # Missing requirements
+                },
+            )
 
     def test_design_test_duplicate_handling(self):
         """Test that design_test handles duplicate test submissions."""
         test_params = {
             "test_content": "def test_duplicate_handling(): pass",
             "test_file_path": "test_duplicates.py",
-            "requirements": "Test duplicate handling"
+            "requirements": "Test duplicate handling",
         }
 
         # First submission
@@ -312,7 +318,7 @@ def test_user_profile_creation():
                 test_params = {
                     "test_content": f"def test_concurrent_{worker_id}(): pass",
                     "test_file_path": f"test_concurrent_{worker_id}.py",
-                    "requirements": f"Test concurrent access worker {worker_id}"
+                    "requirements": f"Test concurrent access worker {worker_id}",
                 }
                 result = self.server.call_tool("design_test", test_params)
                 results.append(result)
@@ -343,7 +349,7 @@ def test_user_profile_creation():
         test_params = {
             "test_content": "def test_cost_tracking(): pass",
             "test_file_path": "test_costs.py",
-            "requirements": "Test cost tracking functionality"
+            "requirements": "Test cost tracking functionality",
         }
 
         # Check initial API usage count
@@ -363,10 +369,12 @@ def test_user_profile_creation():
             assert final_count > initial_count
 
             # Check usage details
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT service, operation, input_tokens, output_tokens, cost_cents
                 FROM api_usage ORDER BY timestamp DESC LIMIT 1
-            """)
+            """
+            )
             usage = cursor.fetchone()
 
             assert usage[0] == "gemini"  # service

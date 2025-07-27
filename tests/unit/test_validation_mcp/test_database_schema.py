@@ -83,27 +83,28 @@ class TestDatabaseSchema:
         columns = {row[1]: row[2] for row in cursor.fetchall()}
 
         expected_columns = {
-            'id': 'INTEGER',
-            'test_fingerprint': 'TEXT',
-            'test_name': 'TEXT',
-            'test_file_path': 'TEXT',
-            'current_stage': 'TEXT',
-            'status': 'TEXT',
-            'gemini_analysis': 'TEXT',
-            'validation_timestamp': 'DATETIME',
-            'created_at': 'DATETIME',
-            'updated_at': 'DATETIME',
-            'approval_token': 'TEXT',
-            'cost_cents': 'INTEGER',
-            'user_value_statement': 'TEXT',
-            'expiration_timestamp': 'DATETIME',
-            'metadata': 'TEXT',
-            'validation_stages': 'TEXT',
-            'implementation_code': 'TEXT',
-            'implementation_analysis': 'TEXT',
-            'breaking_scenarios': 'TEXT',
-            'breaking_analysis': 'TEXT',
-            'approval_notes': 'TEXT'
+            "id": "INTEGER",
+            "test_fingerprint": "TEXT",
+            "test_name": "TEXT",
+            "test_file_path": "TEXT",
+            "file_path": "TEXT",
+            "validation_stage": "TEXT",
+            "status": "TEXT",
+            "gemini_analysis": "TEXT",
+            "validation_timestamp": "DATETIME",
+            "created_at": "DATETIME",
+            "updated_at": "DATETIME",
+            "approval_token": "TEXT",
+            "cost_cents": "INTEGER",
+            "user_value_statement": "TEXT",
+            "expiration_timestamp": "DATETIME",
+            "metadata": "TEXT",
+            "validation_stages": "TEXT",
+            "implementation_code": "TEXT",
+            "implementation_analysis": "TEXT",
+            "breaking_scenarios": "TEXT",
+            "breaking_analysis": "TEXT",
+            "approval_notes": "TEXT",
         }
 
         for col, dtype in expected_columns.items():
@@ -127,15 +128,15 @@ class TestDatabaseSchema:
         columns = {row[1]: row[2] for row in cursor.fetchall()}
 
         expected_columns = {
-            'id': 'INTEGER',
-            'test_fingerprint': 'TEXT',
-            'stage': 'TEXT',
-            'attempt_number': 'INTEGER',
-            'validation_result': 'TEXT',
-            'validated_at': 'DATETIME',
-            'validator_id': 'TEXT',
-            'feedback': 'TEXT',
-            'timestamp': 'DATETIME'
+            "id": "INTEGER",
+            "test_fingerprint": "TEXT",
+            "stage": "TEXT",
+            "attempt_number": "INTEGER",
+            "validation_result": "TEXT",
+            "validated_at": "DATETIME",
+            "validator_id": "TEXT",
+            "feedback": "TEXT",
+            "timestamp": "DATETIME",
         }
 
         for col, dtype in expected_columns.items():
@@ -190,16 +191,16 @@ class TestDatabaseSchema:
         columns = {row[1]: row[2] for row in cursor.fetchall()}
 
         expected_columns = {
-            'id': 'INTEGER',
-            'test_fingerprint': 'TEXT',
-            'approval_token': 'TEXT',
-            'approved_by': 'TEXT',
-            'approved_at': 'DATETIME',
-            'stage': 'TEXT',
-            'issued_timestamp': 'DATETIME',
-            'expires_timestamp': 'DATETIME',
-            'used_timestamp': 'DATETIME',
-            'status': 'TEXT'
+            "id": "INTEGER",
+            "test_fingerprint": "TEXT",
+            "approval_token": "TEXT",
+            "approved_by": "TEXT",
+            "approved_at": "DATETIME",
+            "stage": "TEXT",
+            "issued_timestamp": "DATETIME",
+            "expires_timestamp": "DATETIME",
+            "used_timestamp": "DATETIME",
+            "status": "TEXT",
         }
 
         for col, dtype in expected_columns.items():
@@ -220,32 +221,40 @@ class TestDatabaseSchema:
         cursor = conn.cursor()
 
         # Test UNIQUE constraint on test_fingerprint
-        cursor.execute("""
-            INSERT INTO test_validations (test_fingerprint, test_name, test_file_path, current_stage, status, validation_timestamp)
-            VALUES ('test_fp_123', 'test_example', '/path/to/test.py', 'design', 'PENDING', datetime('now'))
-        """)
+        cursor.execute(
+            """
+            INSERT INTO test_validations (test_fingerprint, test_name, test_file_path, file_path, validation_stage, status, validation_timestamp)
+            VALUES ('test_fp_123', 'test_example', '/path/to/test.py', '/path/to/test.py', 'design', 'PENDING', datetime('now'))
+        """
+        )
         conn.commit()
 
         # This should raise IntegrityError due to UNIQUE constraint
         with pytest.raises(sqlite3.IntegrityError):
-            cursor.execute("""
-                INSERT INTO test_validations (test_fingerprint, test_name, test_file_path, current_stage, status, validation_timestamp)
-                VALUES ('test_fp_123', 'test_example2', '/path/to/test2.py', 'design', 'PENDING', datetime('now'))
-            """)
+            cursor.execute(
+                """
+                INSERT INTO test_validations (test_fingerprint, test_name, test_file_path, file_path, validation_stage, status, validation_timestamp)
+                VALUES ('test_fp_123', 'test_example2', '/path/to/test2.py', '/path/to/test2.py', 'design', 'PENDING', datetime('now'))
+            """
+            )
 
         # Test PRIMARY KEY on approval_tokens
-        cursor.execute("""
+        cursor.execute(
+            """
             INSERT INTO approval_tokens (approval_token, test_fingerprint, approved_by, approved_at, stage, issued_timestamp, expires_timestamp, status)
             VALUES ('token_123', 'test_fp_123', 'test_user', datetime('now'), 'design', datetime('now'), datetime('now', '+7 days'), 'VALID')
-        """)
+        """
+        )
         conn.commit()
 
         # This should raise IntegrityError due to UNIQUE constraint on token
         with pytest.raises(sqlite3.IntegrityError):
-            cursor.execute("""
+            cursor.execute(
+                """
                 INSERT INTO approval_tokens (approval_token, test_fingerprint, approved_by, approved_at, stage, issued_timestamp, expires_timestamp, status)
                 VALUES ('token_123', 'test_fp_456', 'test_user', datetime('now'), 'implementation', datetime('now'), datetime('now', '+7 days'), 'VALID')
-            """)
+            """
+            )
 
         conn.close()
 
@@ -264,10 +273,12 @@ class TestDatabaseSchema:
 
         # Try to insert validation_history without matching test_fingerprint
         with pytest.raises(sqlite3.IntegrityError):
-            cursor.execute("""
+            cursor.execute(
+                """
                 INSERT INTO validation_history (test_fingerprint, stage, attempt_number, validation_result, feedback, timestamp)
                 VALUES ('non_existent_fp', 'design', 1, 'REJECTED', 'Test feedback', datetime('now'))
-            """)
+            """
+            )
 
         conn.close()
 

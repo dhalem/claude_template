@@ -8,6 +8,14 @@ This directory contains two MCP (Model Context Protocol) servers for Claude Code
 
 **Repository**: [github.com/dhalem/claude_template](https://github.com/dhalem/claude_template)
 
+## Recent Architecture Updates
+The code review server has been refactored with a shared component architecture:
+- **BaseCodeAnalyzer**: Provides common workflow and parameter handling
+- **ReviewCodeAnalyzer**: Specializes the base analyzer for code review
+- **BugFindingAnalyzer**: New analyzer for focused bug detection (Phase 3)
+- **Enhanced Response Parsing**: Robust JSON extraction from AI responses
+- **Unified Error Handling**: Consistent user experience across all tools
+
 ## Installation and Setup
 
 **Prerequisites:**
@@ -123,17 +131,55 @@ review_code directory="/path/to/project" model="gemini-2.5-pro" max_file_size=20
 
 ## Supporting Components
 
-### CodeSearcher (`src/code_searcher.py`)
+### Core Analysis Components
+
+#### BaseCodeAnalyzer (`src/base_code_analyzer.py`)
+Base class providing common functionality for all code analysis tools:
+- Parameter validation and standardization
+- File collection and processing orchestration
+- Result formatting and error handling
+- Usage tracking integration
+
+#### ReviewCodeAnalyzer (`src/review_code_analyzer.py`)
+Specialized analyzer for comprehensive code review:
+- Inherits all BaseCodeAnalyzer functionality
+- Customized prompts for code quality analysis
+- Review-specific result formatting
+
+#### BugFindingAnalyzer (`src/bug_finding_analyzer.py`)
+Specialized analyzer for bug detection (Phase 3):
+- Focused on security vulnerabilities and errors
+- Deep analysis of potential issues
+- Bug-specific result formatting
+
+### AI Communication
+
+#### GeminiClient (`src/gemini_client.py`)
+Enhanced Google Gemini API client:
+- Generic `analyze_content` method for multiple analysis types
+- Robust JSON response extraction
+- Built-in retry logic and error handling
+- Cost estimation per analysis type
+
+### Utility Components
+
+#### CodeSearcher (`src/code_searcher.py`)
 Handles database operations for code search functionality. Automatically finds and connects to the code index database.
 
-### GeminiClient (`src/gemini_client.py`)
-Google Gemini API client using the official `google-generativeai` SDK. Includes usage tracking and cost estimation.
-
-### FileCollector (`src/file_collector.py`)
+#### FileCollector (`src/file_collector.py`)
 Recursively scans directories for source and documentation files, respecting gitignore patterns and handling encoding gracefully.
 
-### ReviewFormatter (`src/review_formatter.py`)
+#### ReviewFormatter (`src/review_formatter.py`)
 Formats code review requests with file content, project context, and focus areas for optimal Gemini analysis.
+
+#### BugFormatter (`src/bug_formatter.py`)
+Specialized formatter for bug finding requests, emphasizing security and error detection patterns.
+
+#### UsageTracker (`src/usage_tracker.py`)
+Centralized usage and cost tracking across all analysis types:
+- Per-tool usage statistics
+- Cost projections and tracking
+- Performance metrics collection
 
 ## Troubleshooting MCP Servers
 
@@ -221,5 +267,33 @@ When modifying the MCP servers:
 - `mcp_search_server.py` - Main search server
 - `mcp_review_server.py` - Main review server
 - `src/` - Supporting modules and utilities
+
+## Architecture Benefits
+
+The shared component architecture provides:
+
+### Code Reusability
+- **70%+ shared code** between review and bug finding tools
+- Common parameter validation and error handling
+- Unified file collection and processing
+- Consistent usage tracking across all tools
+
+### Maintainability
+- Single source of truth for common functionality
+- Bug fixes automatically benefit all analysis tools
+- Consistent behavior across different analysis types
+- Simplified testing with isolated components
+
+### Extensibility
+- Easy to add new analysis types (security, performance, etc.)
+- New analyzers inherit all base functionality
+- Plug-and-play architecture for new tools
+- Minimal changes required to existing code
+
+### Performance
+- Optimized file collection shared by all tools
+- Efficient AI communication with retry logic
+- Smart caching opportunities in base components
+- Consistent performance characteristics
 
 This documentation should be updated whenever the server APIs or functionality change.

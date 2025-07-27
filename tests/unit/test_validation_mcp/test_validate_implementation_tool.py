@@ -34,7 +34,7 @@ class TestValidateImplementationTool:
     def setup_method(self):
         """Setup test environment for each test."""
         # Create temporary database file
-        tmp_file = tempfile.NamedTemporaryFile(suffix='.db', delete=False)
+        tmp_file = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
         self.db_path = tmp_file.name
         tmp_file.close()
 
@@ -45,19 +45,19 @@ class TestValidateImplementationTool:
         self.config.set("validation_stages", ["design", "implementation", "breaking", "approval"])
 
         # Set required environment variable for testing
-        os.environ['GEMINI_API_KEY'] = 'test_api_key_for_integration_testing'
+        os.environ["GEMINI_API_KEY"] = "test_api_key_for_integration_testing"
 
         # Create server
         self.server = TestValidationMCPServer(config=self.config)
 
     def teardown_method(self):
         """Cleanup test environment after each test."""
-        if hasattr(self, 'db_path') and os.path.exists(self.db_path):
+        if hasattr(self, "db_path") and os.path.exists(self.db_path):
             os.unlink(self.db_path)
 
         # Clean up environment variable
-        if 'GEMINI_API_KEY' in os.environ:
-            del os.environ['GEMINI_API_KEY']
+        if "GEMINI_API_KEY" in os.environ:
+            del os.environ["GEMINI_API_KEY"]
 
     def _create_approved_design(self):
         """Helper to create an approved design for testing."""
@@ -78,7 +78,7 @@ def test_user_registration():
     assert user.is_active is True
 """,
             "test_file_path": "test_user_registration.py",
-            "requirements": "User should be able to register with valid username, email, and password. System should create active user account and assign unique ID."
+            "requirements": "User should be able to register with valid username, email, and password. System should create active user account and assign unique ID.",
         }
 
         design_result = self.server.call_tool("design_test", design_params)
@@ -139,7 +139,7 @@ class User:
         self.email = email
         self.is_active = is_active
 """,
-            "design_token": design_token
+            "design_token": design_token,
         }
 
         # This should work (not raise NotImplementedError anymore)
@@ -161,7 +161,7 @@ class User:
         valid_params = {
             "test_fingerprint": fingerprint,
             "implementation_code": "def test_valid(): pass",
-            "design_token": design_token
+            "design_token": design_token,
         }
 
         result = self.server.call_tool("validate_implementation", valid_params)
@@ -171,7 +171,7 @@ class User:
         invalid_params = {
             "test_fingerprint": fingerprint,
             "implementation_code": "def test_invalid(): pass",
-            "design_token": "invalid_token_123"
+            "design_token": "invalid_token_123",
         }
 
         with pytest.raises(ValueError, match="Invalid or expired design token"):
@@ -184,7 +184,7 @@ class User:
         impl_params = {
             "test_fingerprint": fingerprint,
             "implementation_code": "def test_db_integration(): pass",
-            "design_token": design_token
+            "design_token": design_token,
         }
 
         result = self.server.call_tool("validate_implementation", impl_params)
@@ -192,10 +192,13 @@ class User:
         # Verify data was updated in database
         with self.server.db_manager.get_db_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("""
-                SELECT current_stage, status, updated_at
+            cursor.execute(
+                """
+                SELECT validation_stage, status, updated_at
                 FROM test_validations WHERE test_fingerprint = ?
-            """, (fingerprint,))
+            """,
+                (fingerprint,),
+            )
             row = cursor.fetchone()
 
             assert row is not None
@@ -209,7 +212,7 @@ class User:
         impl_params = {
             "test_fingerprint": fingerprint,
             "implementation_code": "def test_token_gen(): pass",
-            "design_token": design_token
+            "design_token": design_token,
         }
 
         result = self.server.call_tool("validate_implementation", impl_params)
@@ -258,7 +261,7 @@ class User:
         self.email = email
         self.is_active = is_active
 """,
-            "design_token": design_token
+            "design_token": design_token,
         }
 
         good_result = self.server.call_tool("validate_implementation", good_impl_params)
@@ -281,7 +284,7 @@ def test_completely_different():
     x = 1 + 1
     assert x == 2
 """,
-            "design_token": design_token
+            "design_token": design_token,
         }
 
         bad_result = self.server.call_tool("validate_implementation", bad_impl_params)
@@ -297,26 +300,27 @@ def test_completely_different():
 
         # Test with empty implementation code
         with pytest.raises(ValueError, match="implementation_code cannot be empty"):
-            self.server.call_tool("validate_implementation", {
-                "test_fingerprint": fingerprint,
-                "implementation_code": "",
-                "design_token": design_token
-            })
+            self.server.call_tool(
+                "validate_implementation",
+                {"test_fingerprint": fingerprint, "implementation_code": "", "design_token": design_token},
+            )
 
         # Test with invalid Python syntax
         with pytest.raises(ValueError, match="Invalid Python syntax"):
-            self.server.call_tool("validate_implementation", {
-                "test_fingerprint": fingerprint,
-                "implementation_code": "def invalid_syntax( pass",
-                "design_token": design_token
-            })
+            self.server.call_tool(
+                "validate_implementation",
+                {
+                    "test_fingerprint": fingerprint,
+                    "implementation_code": "def invalid_syntax( pass",
+                    "design_token": design_token,
+                },
+            )
 
         # Test with missing fingerprint
         with pytest.raises(ValueError, match="Missing required parameter"):
-            self.server.call_tool("validate_implementation", {
-                "implementation_code": "def test(): pass",
-                "design_token": design_token
-            })
+            self.server.call_tool(
+                "validate_implementation", {"implementation_code": "def test(): pass", "design_token": design_token}
+            )
 
     def test_validate_implementation_fingerprint_mismatch(self):
         """Test validate_implementation with mismatched fingerprints."""
@@ -326,11 +330,14 @@ def test_completely_different():
         wrong_fingerprint = "wrong_fingerprint_12345"
 
         with pytest.raises(ValueError, match="Token fingerprint mismatch"):
-            self.server.call_tool("validate_implementation", {
-                "test_fingerprint": wrong_fingerprint,
-                "implementation_code": "def test_mismatch(): pass",
-                "design_token": design_token
-            })
+            self.server.call_tool(
+                "validate_implementation",
+                {
+                    "test_fingerprint": wrong_fingerprint,
+                    "implementation_code": "def test_mismatch(): pass",
+                    "design_token": design_token,
+                },
+            )
 
     def test_validate_implementation_concurrent_access(self):
         """Test validate_implementation handles concurrent calls safely."""
@@ -351,7 +358,7 @@ def test_completely_different():
                 impl_params = {
                     "test_fingerprint": fingerprint,
                     "implementation_code": f"def test_concurrent_{worker_id}(): assert True",
-                    "design_token": token
+                    "design_token": token,
                 }
                 result = self.server.call_tool("validate_implementation", impl_params)
                 results.append(result)
@@ -386,7 +393,7 @@ def test_completely_different():
         impl_params = {
             "test_fingerprint": fingerprint,
             "implementation_code": "def test_cost_tracking(): pass",
-            "design_token": design_token
+            "design_token": design_token,
         }
 
         result = self.server.call_tool("validate_implementation", impl_params)
@@ -458,16 +465,16 @@ class ValidationError(Exception):
 def generate_id():
     return 1
 """,
-            "design_token": design_token
+            "design_token": design_token,
         }
 
         result = self.server.call_tool("validate_implementation", impl_params)
 
         # Should analyze enhanced implementation features
         analysis = result["gemini_analysis"].lower()
-        assert any(keyword in analysis for keyword in [
-            "class", "method", "validation", "edge case", "import"
-        ]), "Analysis should mention implementation enhancements"
+        assert any(
+            keyword in analysis for keyword in ["class", "method", "validation", "edge case", "import"]
+        ), "Analysis should mention implementation enhancements"
 
 
 if __name__ == "__main__":

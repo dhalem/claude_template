@@ -133,10 +133,10 @@ def raises(exception_type):
             cursor.execute(
                 """
                 INSERT INTO test_validations
-                (test_fingerprint, file_path, validation_stage, created_at, metadata)
-                VALUES (?, ?, ?, ?, ?)
+                (test_fingerprint, test_file_path, file_path, validation_stage, created_at, metadata)
+                VALUES (?, ?, ?, ?, ?, ?)
             """,
-                (fingerprint, test_file, "design", datetime.now().isoformat(), str(metadata)),
+                (fingerprint, test_file, test_file, "design", datetime.now().isoformat(), str(metadata)),
             )
             conn.commit()
 
@@ -230,7 +230,7 @@ def raises(exception_type):
             cursor = conn.cursor()
             cursor.execute(
                 """
-                INSERT INTO approval_tokens (test_fingerprint, token, approved_by, approved_at, stage, issued_timestamp, expires_timestamp, status)
+                INSERT INTO approval_tokens (test_fingerprint, approval_token, approved_by, approved_at, stage, issued_timestamp, expires_timestamp, status)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """,
                 (
@@ -272,7 +272,7 @@ def raises(exception_type):
             # Check final state
             cursor.execute(
                 """
-                SELECT validation_stage, file_path FROM test_validations
+                SELECT validation_stage, test_file_path FROM test_validations
                 WHERE test_fingerprint = ?
             """,
                 (fingerprint,),
@@ -315,10 +315,10 @@ def raises(exception_type):
             cursor.execute(
                 """
                 INSERT INTO test_validations
-                (test_fingerprint, file_path, validation_stage, created_at)
-                VALUES (?, ?, ?, ?)
+                (test_fingerprint, test_file_path, file_path, validation_stage, created_at)
+                VALUES (?, ?, ?, ?, ?)
             """,
-                (fingerprint, test_file, "design", datetime.now().isoformat()),
+                (fingerprint, test_file, test_file, "design", datetime.now().isoformat()),
             )
             conn.commit()
 
@@ -406,10 +406,10 @@ def raises(exception_type):
                     cursor.execute(
                         """
                         INSERT INTO test_validations
-                        (test_fingerprint, file_path, validation_stage, created_at)
-                        VALUES (?, ?, ?, ?)
+                        (test_fingerprint, test_file_path, file_path, validation_stage, created_at)
+                        VALUES (?, ?, ?, ?, ?)
                     """,
-                        (fingerprint, test_file, "design", datetime.now().isoformat()),
+                        (fingerprint, test_file, test_file, "design", datetime.now().isoformat()),
                     )
                     conn.commit()
 
@@ -497,10 +497,10 @@ def raises(exception_type):
             cursor.execute(
                 """
                 INSERT INTO test_validations
-                (test_fingerprint, file_path, validation_stage, created_at)
-                VALUES (?, ?, ?, ?)
+                (test_fingerprint, test_file_path, file_path, validation_stage, created_at)
+                VALUES (?, ?, ?, ?, ?)
             """,
-                (fingerprint, test_file, "design", datetime.now().isoformat()),
+                (fingerprint, test_file, test_file, "design", datetime.now().isoformat()),
             )
             conn.commit()
 
@@ -564,11 +564,12 @@ def raises(exception_type):
             cursor.execute(
                 """
                 INSERT INTO test_validations
-                (test_fingerprint, file_path, validation_stage, created_at, validation_stages)
-                VALUES (?, ?, ?, ?, ?)
+                (test_fingerprint, test_file_path, file_path, validation_stage, created_at, validation_stages)
+                VALUES (?, ?, ?, ?, ?, ?)
             """,
                 (
                     fingerprint,
+                    test_file,
                     test_file,
                     "design",
                     datetime.now().isoformat(),
@@ -668,12 +669,13 @@ def test_performance_benchmark():
                 cursor.execute(
                     """
                     INSERT INTO test_validations
-                    (test_fingerprint, file_path, validation_stage, created_at,
+                    (test_fingerprint, test_file_path, file_path, validation_stage, created_at,
                      metadata, validation_stages)
-                    VALUES (?, ?, ?, ?, ?, ?)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
                 """,
                     (
                         fingerprint,
+                        scenario["file"],
                         scenario["file"],
                         "design",
                         datetime.now().isoformat(),

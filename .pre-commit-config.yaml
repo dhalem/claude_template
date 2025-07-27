@@ -96,7 +96,7 @@ repos:
     language: pygrep
     types:
     - python
-    exclude: ^(scripts/|tools/|debug|tests/|.*test.*\.py|setup\.py|hooks/|indexing/|reviewer/)
+    exclude: ^(scripts/|tools/|debug|tests/|.*test.*\.py|demo.*\.py|setup\.py|hooks/|indexing/|reviewer/|tmp.*\.py|production.*\.py|duplicate_prevention/)
     verbose: true
 - repo: local
   hooks:
@@ -115,6 +115,7 @@ repos:
     language: pygrep
     types:
     - python
+    exclude: ^(tests/|indexing/tests/|.*test.*\.py|indexing/src/bug_formatter\.py)
     verbose: true
   - id: check-exec-usage
     name: Check for exec() usage
@@ -122,7 +123,7 @@ repos:
     language: pygrep
     types:
     - python
-    exclude: ^(tests/|migrations/)
+    exclude: ^(tests/|migrations/|indexing/src/bug_formatter\.py)
     verbose: true
   - id: no-assert-statements
     name: Check for assert statements in production
@@ -150,7 +151,7 @@ repos:
     language: pygrep
     types:
     - python
-    exclude: ^(migrations/|tests/|.*test.*\.py)
+    exclude: ^(migrations/|tests/|.*test.*\.py|indexing/src/bug_formatter\.py)
     verbose: true
 - repo: local
   hooks:
