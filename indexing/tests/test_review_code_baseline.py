@@ -349,10 +349,11 @@ class TestGeminiClientBaseline(unittest.TestCase):
         """Test basic review_code API call functionality."""
         from gemini_client import GeminiClient
 
-        client = GeminiClient(model="gemini-1.5-flash")  # Use flash for faster/cheaper tests
+        try:
+            client = GeminiClient(model="gemini-1.5-flash")  # Use flash for faster/cheaper tests
 
-        # Simple test code to review
-        test_code = """def hello_world():
+            # Simple test code to review
+            test_code = """def hello_world():
     print("Hello, World!")
     return "success"
 
@@ -360,8 +361,13 @@ if __name__ == "__main__":
     result = hello_world()
 """
 
-        # Make the API call
-        review_result = client.review_code(test_code)
+            # Make the API call
+            review_result = client.review_code(test_code)
+        except Exception as e:
+            if "API key not valid" in str(e) or "API_KEY_INVALID" in str(e):
+                self.skipTest(f"Skipping test due to invalid API key: {e}")
+            else:
+                raise
 
         # Verify response
         self.assertIsInstance(review_result, str)

@@ -111,6 +111,58 @@ review_code directory="/path/to/project" focus_areas=["security", "error_handlin
 review_code directory="/path/to/project" model="gemini-2.5-pro" max_file_size=2097152
 ```
 
+### 2. `analyze_files` - Analyze specific files with custom prompt
+**NEW TOOL**: Analyze specific files with a dynamic, user-defined prompt for flexible code analysis.
+
+**Parameters:**
+- `file_paths` (required): Array of absolute file paths to analyze
+- `prompt` (required): Custom analysis prompt for Gemini
+- `model` (optional): Gemini model - "gemini-1.5-flash" or "gemini-2.5-pro" (default)
+- `max_file_size` (optional): Maximum file size in bytes (default: 1048576)
+
+**Examples:**
+```bash
+# Security vulnerability scan
+analyze_files file_paths=["/path/to/auth.py", "/path/to/db.py"] prompt="Scan these files for security vulnerabilities, especially SQL injection, XSS, and authentication bypasses. Provide specific line numbers and remediation steps."
+
+# Performance analysis
+analyze_files file_paths=["/path/to/api.py"] prompt="Analyze this API code for performance bottlenecks. Look for N+1 queries, inefficient loops, memory leaks, and suggest optimizations."
+
+# Code modernization
+analyze_files file_paths=["/path/to/legacy.py", "/path/to/old_utils.py"] prompt="Suggest modernization improvements for these Python files. Focus on type hints, async/await patterns, and current best practices."
+
+# Documentation review
+analyze_files file_paths=["/path/to/complex_module.py"] prompt="Review the documentation and comments in this file. Identify missing docstrings, unclear variable names, and suggest improvements for readability."
+
+# Architecture analysis
+analyze_files file_paths=["/path/to/models.py", "/path/to/views.py", "/path/to/serializers.py"] prompt="Analyze the architecture of these Django components. Check for proper separation of concerns, adherence to MVC patterns, and suggest structural improvements."
+
+```
+
+### Tool Comparison: `review_code` vs `analyze_files`
+
+| Feature | `review_code` | `analyze_files` |
+|---------|---------------|-----------------|
+| **Input** | Directory path | Specific file paths |
+| **Prompt** | Fixed code review template | Custom user-defined prompt |
+| **Use Case** | Comprehensive project review | Targeted analysis with specific goals |
+| **File Discovery** | Automatic (respects gitignore) | Manual selection |
+| **Focus Areas** | Predefined categories | Completely flexible |
+| **Best For** | New projects, general review | Specific issues, custom analysis |
+
+**When to use `review_code`:**
+- Initial project assessment
+- General code quality review
+- Comprehensive security/performance audit
+- Following standardized review practices
+
+**When to use `analyze_files`:**
+- Investigating specific issues
+- Targeted security scans
+- Code modernization tasks
+- Custom analysis requirements
+- Educational code walkthroughs
+
 **Features:**
 - Automatic file collection (respects gitignore patterns)
 - Supports multiple programming languages (.py, .js, .ts, .go, .rs, etc.)

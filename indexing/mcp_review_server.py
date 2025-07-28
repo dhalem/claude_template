@@ -35,10 +35,11 @@ except NameError:
     else:
         current_file_dir = os.path.abspath(".")
 
-src_path = os.path.join(current_file_dir, 'src')
+src_path = os.path.join(current_file_dir, "src")
 if src_path not in sys.path:
     sys.path.insert(0, src_path)
 
+from analysis_formatter import AnalysisFormatter
 from file_collector import FileCollector
 from gemini_client import GeminiClient
 from review_formatter import ReviewFormatter
@@ -50,11 +51,11 @@ LOG_FILE = LOG_DIR / f"server_{datetime.now().strftime('%Y%m%d')}.log"
 
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     handlers=[
         logging.FileHandler(LOG_FILE),
         # Don't log to stderr to avoid interfering with MCP protocol
-    ]
+    ],
 )
 
 logger = logging.getLogger(__name__)
@@ -77,6 +78,7 @@ async def main():
         # Initialize components
         file_collector = FileCollector()
         review_formatter = ReviewFormatter()
+        analysis_formatter = AnalysisFormatter()
         default_model = "gemini-2.5-pro"
         logger.info("✅ Components initialized successfully")
 
@@ -85,45 +87,81 @@ async def main():
         @server.list_tools()
         async def handle_list_tools() -> list[Tool]:
             """List available tools."""
-            tool = Tool(
+            review_tool = Tool(
                 name="review_code",
                 description="Perform a comprehensive code review of a directory using Gemini AI",
                 inputSchema={
                     "type": "object",
                     "properties": {
-                        "directory": {
-                            "type": "string",
-                            "description": "Absolute path to the directory to review"
-                        },
+                        "directory": {"type": "string", "description": "Absolute path to the directory to review"},
                         "focus_areas": {
                             "type": "array",
-                            "items": {
-                                "type": "string"
-                            },
-                            "description": "Optional: Specific areas to focus on (e.g., 'security', 'performance')"
+                            "items": {"type": "string"},
+                            "description": "Optional: Specific areas to focus on (e.g., 'security', 'performance')",
                         },
                         "model": {
                             "type": "string",
                             "description": "Optional: Gemini model to use (default: gemini-2.5-pro)",
-                            "enum": ["gemini-1.5-flash", "gemini-2.5-pro"]
+                            "enum": ["gemini-1.5-flash", "gemini-2.5-pro"],
                         },
                         "max_file_size": {
                             "type": "number",
-                            "description": "Optional: Maximum file size in bytes (default: 1048576)"
-                        }
+                            "description": "Optional: Maximum file size in bytes (default: 1048576)",
+                        },
                     },
-                    "required": ["directory"]
-                }
+                    "required": ["directory"],
+                },
             )
-            return [tool]
+
+            analyze_tool = Tool(
+                name="analyze_files",
+                description="Analyze specific files with a custom prompt using Gemini AI",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "file_paths": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "description": "Array of absolute file paths to analyze",
+                        },
+                        "prompt": {"type": "string", "description": "Custom analysis prompt for Gemini"},
+                        "model": {
+                            "type": "string",
+                            "description": "Optional: Gemini model to use (default: gemini-2.5-pro)",
+                            "enum": ["gemini-1.5-flash", "gemini-2.5-pro"],
+                        },
+                        "max_file_size": {
+                            "type": "number",
+                            "description": "Optional: Maximum file size in bytes (default: 1048576)",
+                        },
+                    },
+                    "required": ["file_paths", "prompt"],
+                },
+            )
+
+            return [review_tool, analyze_tool]
 
         @server.call_tool()
         async def handle_call_tool(name: str, arguments: Dict[str, Any]) -> list[TextContent]:
             """Handle tool calls - returns list of TextContent, not CallToolResult."""
             try:
-                if name != "review_code":
+                if name == "review_code":
+                    return await handle_review_code(arguments)
+                elif name == "analyze_files":
+                    return await handle_analyze_files(arguments)
+                else:
                     return [TextContent(type="text", text=f"Unknown tool: {name}")]
+            except Exception as e:
+                import traceback
 
+                error_details = traceback.format_exc()
+                logger.error(f"Error in handle_call_tool: {e}")
+                logger.error(f"Full traceback: {error_details}")
+                return [TextContent(type="text", text=f"Error: {str(e)}\n\nFull error details:\n{error_details}")]
+
+        async def handle_review_code(arguments: Dict[str, Any]) -> list[TextContent]:
+            """Handle review_code tool calls."""
+            try:
                 # Extract arguments
                 directory = arguments.get("directory")
                 focus_areas = arguments.get("focus_areas", [])
@@ -159,10 +197,7 @@ async def main():
                 claude_md_path = str(claude_md_path) if claude_md_path.exists() else None
 
                 review_prompt = review_formatter.format_review_request(
-                    files=files,
-                    file_tree=file_tree,
-                    focus_areas=focus_areas,
-                    claude_md_path=claude_md_path
+                    files=files, file_tree=file_tree, focus_areas=focus_areas, claude_md_path=claude_md_path
                 )
 
                 # Initialize Gemini client
@@ -201,15 +236,104 @@ async def main():
 *Generated by Code Review MCP Server using {model}*
 """
 
-                logger.info(f"Review completed. Files: {collection_summary['files_collected']}, "
-                            f"Tokens: {usage['total_tokens']}, Cost: ${usage['estimated_cost']:.6f}")
+                logger.info(
+                    f"Review completed. Files: {collection_summary['files_collected']}, "
+                    f"Tokens: {usage['total_tokens']}, Cost: ${usage['estimated_cost']:.6f}"
+                )
 
                 return [TextContent(type="text", text=response)]
 
             except Exception as e:
                 import traceback
+
                 error_details = traceback.format_exc()
                 logger.error(f"Error in review_code: {e}")
+                logger.error(f"Full traceback: {error_details}")
+                return [TextContent(type="text", text=f"Error: {str(e)}\n\nFull error details:\n{error_details}")]
+
+        async def handle_analyze_files(arguments: Dict[str, Any]) -> list[TextContent]:
+            """Handle analyze_files tool calls."""
+            try:
+                # Extract arguments
+                file_paths = arguments.get("file_paths", [])
+                custom_prompt = arguments.get("prompt")
+                model = arguments.get("model", default_model)
+                max_file_size = arguments.get("max_file_size", 1048576)  # 1MB default
+
+                if not file_paths:
+                    return [TextContent(type="text", text="Error: file_paths parameter is required")]
+
+                if not custom_prompt:
+                    return [TextContent(type="text", text="Error: prompt parameter is required")]
+
+                if not isinstance(file_paths, list):
+                    return [TextContent(type="text", text="Error: file_paths must be an array of file paths")]
+
+                logger.info(f"Starting analysis for {len(file_paths)} files with custom prompt")
+
+                # Set file size limit
+                file_collector.max_file_size = max_file_size
+
+                # Collect specific files
+                files = file_collector.collect_specific_files(file_paths)
+
+                if not files:
+                    return [TextContent(type="text", text="No files were successfully collected for analysis")]
+
+                # Format analysis request
+                analysis_prompt = analysis_formatter.format_analysis_request(files=files, custom_prompt=custom_prompt)
+
+                # Initialize Gemini client
+                gemini_client = GeminiClient(model=model)
+
+                # Get analysis from Gemini
+                logger.info(f"Sending analysis request to Gemini ({model})")
+                analysis_text = gemini_client.analyze_code(analysis_prompt, task_type="analysis")
+
+                # Get usage and collection statistics
+                usage = gemini_client.get_usage_report()
+                collection_summary = file_collector.get_collection_summary()
+
+                # Format final response
+                response = f"""# File Analysis Report
+
+## Summary
+- **Files Analyzed**: {collection_summary['files_collected']}
+- **Files Requested**: {len(file_paths)}
+- **Files Skipped**: {collection_summary['files_skipped']}
+- **Total Size**: {collection_summary['total_size']:,} bytes
+- **Model**: {model}
+
+## Custom Prompt
+{custom_prompt}
+
+## Usage Statistics
+- **Total Tokens**: {usage['total_tokens']:,}
+- **Input Tokens**: {usage['input_tokens']:,}
+- **Output Tokens**: {usage['output_tokens']:,}
+- **Estimated Cost**: ${usage['estimated_cost']:.6f}
+
+---
+
+{analysis_text}
+
+---
+
+*Generated by Code Review MCP Server using {model}*
+"""
+
+                logger.info(
+                    f"Analysis completed. Files: {collection_summary['files_collected']}, "
+                    f"Tokens: {usage['total_tokens']}, Cost: ${usage['estimated_cost']:.6f}"
+                )
+
+                return [TextContent(type="text", text=response)]
+
+            except Exception as e:
+                import traceback
+
+                error_details = traceback.format_exc()
+                logger.error(f"Error in analyze_files: {e}")
                 logger.error(f"Full traceback: {error_details}")
                 return [TextContent(type="text", text=f"Error: {str(e)}\n\nFull error details:\n{error_details}")]
 
@@ -223,9 +347,8 @@ async def main():
                 server_name="code-review",
                 server_version="1.0.0",
                 capabilities=server.get_capabilities(
-                    notification_options=NotificationOptions(),
-                    experimental_capabilities={}
-                )
+                    notification_options=NotificationOptions(), experimental_capabilities={}
+                ),
             )
             logger.info(f"📋 Initialization options created: {init_options}")
 

@@ -28,28 +28,42 @@ class FileCollector:
 
     # File extensions to include
     SOURCE_EXTENSIONS = {
-        '.py', '.js', '.jsx', '.ts', '.tsx', '.rs', '.go', '.java',
-        '.c', '.cpp', '.h', '.hpp', '.sh', '.bash'
+        ".py",
+        ".js",
+        ".jsx",
+        ".ts",
+        ".tsx",
+        ".rs",
+        ".go",
+        ".java",
+        ".c",
+        ".cpp",
+        ".h",
+        ".hpp",
+        ".sh",
+        ".bash",
     }
 
-    CONFIG_EXTENSIONS = {
-        '.json', '.yaml', '.yml', '.toml', '.ini'
-    }
+    CONFIG_EXTENSIONS = {".json", ".yaml", ".yml", ".toml", ".ini"}
 
-    DOC_EXTENSIONS = {
-        '.md', '.rst', '.txt'
-    }
+    DOC_EXTENSIONS = {".md", ".rst", ".txt"}
 
     # Directories to exclude (shared with code_indexer.py)
     EXCLUDED_DIRS = {
-        '.git', 'node_modules', 'venv', '.venv', '__pycache__',
-        'dist', 'build', 'target', '.pytest_cache', '.mypy_cache'
+        ".git",
+        "node_modules",
+        "venv",
+        ".venv",
+        "__pycache__",
+        "dist",
+        "build",
+        "target",
+        ".pytest_cache",
+        ".mypy_cache",
     }
 
     # Files to always include (case insensitive)
-    ALWAYS_INCLUDE = {
-        'claude.md', 'readme.md', 'pyproject.toml', 'package.json', 'cargo.toml'
-    }
+    ALWAYS_INCLUDE = {"claude.md", "readme.md", "pyproject.toml", "package.json", "cargo.toml"}
 
     def __init__(self, max_file_size: int = 1024 * 1024):  # 1MB default
         self.max_file_size = max_file_size
@@ -87,9 +101,11 @@ class FileCollector:
         # Recursively collect files
         self._collect_recursive(directory_path, gitignore_patterns)
 
-        logger.info(f"Collected {len(self.collected_files)} files, "
-                    f"skipped {len(self.skipped_files)}, "
-                    f"total size: {self.total_size:,} bytes")
+        logger.info(
+            f"Collected {len(self.collected_files)} files, "
+            f"skipped {len(self.skipped_files)}, "
+            f"total size: {self.total_size:,} bytes"
+        )
 
         return self.collected_files
 
@@ -159,13 +175,15 @@ class FileCollector:
 
         # Check extension
         extension = file_path.suffix.lower()
-        return (extension in self.SOURCE_EXTENSIONS or
-                extension in self.CONFIG_EXTENSIONS or
-                extension in self.DOC_EXTENSIONS)
+        return (
+            extension in self.SOURCE_EXTENSIONS
+            or extension in self.CONFIG_EXTENSIONS
+            or extension in self.DOC_EXTENSIONS
+        )
 
     def _read_file_safely(self, file_path: Path) -> Optional[str]:
         """Read file content with encoding detection."""
-        encodings = ['utf-8', 'latin-1', 'cp1252']
+        encodings = ["utf-8", "latin-1", "cp1252"]
 
         for encoding in encodings:
             try:
@@ -191,7 +209,7 @@ class FileCollector:
     def _is_binary_content(self, content: str) -> bool:
         """Check if content appears to be binary."""
         # Check for null bytes
-        if '\x00' in content:
+        if "\x00" in content:
             return True
 
         # Check for high ratio of non-printable characters
@@ -204,15 +222,15 @@ class FileCollector:
 
     def _load_gitignore(self, directory: Path) -> List[str]:
         """Load gitignore patterns from .gitignore file."""
-        gitignore_path = directory / '.gitignore'
+        gitignore_path = directory / ".gitignore"
         patterns = []
 
         if gitignore_path.exists():
             try:
-                with open(gitignore_path, encoding='utf-8') as f:
+                with open(gitignore_path, encoding="utf-8") as f:
                     for line in f:
                         line = line.strip()
-                        if line and not line.startswith('#'):
+                        if line and not line.startswith("#"):
                             patterns.append(line)
 
                 logger.debug(f"Loaded {len(patterns)} gitignore patterns")
@@ -230,26 +248,26 @@ class FileCollector:
     def _match_pattern(self, path: str, pattern: str) -> bool:
         """Simple gitignore pattern matching."""
         # Handle negation patterns
-        if pattern.startswith('!'):
+        if pattern.startswith("!"):
             return False  # Simplified - don't handle negation for now
 
         # Convert gitignore pattern to regex
         # Escape special regex chars except * and ?
-        regex_pattern = re.escape(pattern).replace(r'\*', '.*').replace(r'\?', '.')
+        regex_pattern = re.escape(pattern).replace(r"\*", ".*").replace(r"\?", ".")
 
         # Handle directory patterns
-        if pattern.endswith('/'):
+        if pattern.endswith("/"):
             # Directory patterns should match the directory and anything inside it
-            regex_pattern = regex_pattern[:-1] + '(/.*)?$'
+            regex_pattern = regex_pattern[:-1] + "(/.*)?$"
         else:
             # For file/directory patterns, match at path boundaries (end of string or followed by /)
-            regex_pattern = regex_pattern + '(/|$)'
+            regex_pattern = regex_pattern + "(/|$)"
 
         # Handle absolute patterns
-        if pattern.startswith('/'):
-            regex_pattern = '^' + regex_pattern[1:]
+        if pattern.startswith("/"):
+            regex_pattern = "^" + regex_pattern[1:]
         else:
-            regex_pattern = '(^|/)' + regex_pattern
+            regex_pattern = "(^|/)" + regex_pattern
 
         try:
             return bool(re.search(regex_pattern, path))
@@ -274,11 +292,76 @@ class FileCollector:
 
         return "\n".join(tree_lines)
 
+    def collect_specific_files(self, file_paths: List[str]) -> Dict[str, str]:
+        """Collect specific files by their paths.
+
+        Args:
+            file_paths: List of absolute file paths to collect
+
+        Returns:
+            Dictionary mapping file paths to file contents
+        """
+        # Reset state
+        self.collected_files = {}
+        self.skipped_files = []
+        self.total_size = 0
+        self.base_directory = None
+
+        # Process each file path individually
+        for file_path_str in file_paths:
+            file_path = Path(file_path_str).resolve()
+
+            # Validate file exists and is a file
+            if not file_path.exists():
+                self.skipped_files.append(f"{file_path} (does not exist)")
+                logger.warning(f"File does not exist: {file_path}")
+                continue
+
+            if not file_path.is_file():
+                self.skipped_files.append(f"{file_path} (not a file)")
+                logger.warning(f"Path is not a file: {file_path}")
+                continue
+
+            # Check if file should be included
+            if not self._should_include_file(file_path):
+                self.skipped_files.append(f"{file_path} (unsupported file type)")
+                logger.debug(f"Skipping unsupported file: {file_path}")
+                continue
+
+            # Check file size
+            try:
+                if file_path.stat().st_size > self.max_file_size:
+                    self.skipped_files.append(f"{file_path} (too large)")
+                    logger.debug(f"Skipping large file: {file_path}")
+                    continue
+            except OSError:
+                self.skipped_files.append(f"{file_path} (stat error)")
+                logger.warning(f"Could not stat file: {file_path}")
+                continue
+
+            # Read file content
+            content = self._read_file_safely(file_path)
+            if content is not None:
+                # Use the full file path as the key for specific file collection
+                self.collected_files[str(file_path)] = content
+                self.total_size += len(content)
+                logger.debug(f"Collected file: {file_path}")
+            else:
+                self.skipped_files.append(f"{file_path} (read error)")
+
+        logger.info(
+            f"Collected {len(self.collected_files)} files from {len(file_paths)} requested, "
+            f"skipped {len(self.skipped_files)}, "
+            f"total size: {self.total_size:,} bytes"
+        )
+
+        return self.collected_files
+
     def get_collection_summary(self) -> Dict:
         """Get summary of collection results."""
         return {
             "files_collected": len(self.collected_files),
             "files_skipped": len(self.skipped_files),
             "total_size": self.total_size,
-            "skipped_files": self.skipped_files
+            "skipped_files": self.skipped_files,
         }

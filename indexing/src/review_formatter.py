@@ -13,24 +13,27 @@
 Formats collected files and context into review prompts for Gemini.
 """
 
-from pathlib import Path
+import logging
 from typing import Dict, List, Optional
 
+from base_formatter import BaseFormatter
 
-class ReviewFormatter:
+logger = logging.getLogger(__name__)
+
+
+class ReviewFormatter(BaseFormatter):
     """Formats code files and context for review by Gemini."""
 
     def __init__(self):
+        super().__init__()
         self.claude_md_content = ""
-        self.file_tree = ""
-        self.code_files = ""
 
     def format_review_request(
         self,
         files: Dict[str, str],
         file_tree: str,
         focus_areas: Optional[List[str]] = None,
-        claude_md_path: Optional[str] = None
+        claude_md_path: Optional[str] = None,
     ) -> str:
         """Format a complete review request for Gemini.
 
@@ -46,11 +49,14 @@ class ReviewFormatter:
         # Load CLAUDE.md content if available
         self._load_claude_md(claude_md_path, files)
 
-        # Format file tree
-        self.file_tree = self._format_file_tree(file_tree)
+        # Use base formatter to get formatted components
+        context = self.format_base_context(files, file_tree)
+        self.file_tree = context["file_tree"]
+        self.code_files = context["code_files"]
 
-        # Format code files
-        self.code_files = self._format_code_files(files)
+        # Use loaded claude_md_content if available, otherwise use from context
+        if not self.claude_md_content:
+            self.claude_md_content = context["claude_md"]
 
         # Build focus areas prompt
         focus_areas_prompt = self._build_focus_areas_prompt(focus_areas)
@@ -65,7 +71,7 @@ class ReviewFormatter:
         # Try provided path first
         if claude_md_path:
             try:
-                with open(claude_md_path, encoding='utf-8') as f:
+                with open(claude_md_path, encoding="utf-8") as f:
                     self.claude_md_content = f.read()
                     return
             except Exception as e:
@@ -74,66 +80,13 @@ class ReviewFormatter:
 
         # Try to find CLAUDE.md in files
         for file_path, content in files.items():
-            if file_path.lower().endswith('claude.md'):
+            if file_path.lower().endswith("claude.md"):
                 self.claude_md_content = content
                 break
 
         # If no CLAUDE.md found, use a default message
         if not self.claude_md_content:
             self.claude_md_content = "No CLAUDE.md file found in the project."
-
-    def _format_file_tree(self, file_tree: str) -> str:
-        """Format file tree for display."""
-        return f"""```
-{file_tree}
-```"""
-
-    def _format_code_files(self, files: Dict[str, str]) -> str:
-        """Format code files for review."""
-        formatted_files = []
-
-        for file_path, content in files.items():
-            # Determine file type for syntax highlighting
-            file_ext = Path(file_path).suffix.lower()
-            language = self._get_language_from_extension(file_ext)
-
-            formatted_file = f"""## File: {file_path}
-
-```{language}
-{content}
-```"""
-            formatted_files.append(formatted_file)
-
-        return "\n\n".join(formatted_files)
-
-    def _get_language_from_extension(self, extension: str) -> str:
-        """Get language identifier for syntax highlighting."""
-        language_map = {
-            '.py': 'python',
-            '.js': 'javascript',
-            '.jsx': 'javascript',
-            '.ts': 'typescript',
-            '.tsx': 'typescript',
-            '.rs': 'rust',
-            '.go': 'go',
-            '.java': 'java',
-            '.c': 'c',
-            '.cpp': 'cpp',
-            '.h': 'c',
-            '.hpp': 'cpp',
-            '.sh': 'bash',
-            '.bash': 'bash',
-            '.json': 'json',
-            '.yaml': 'yaml',
-            '.yml': 'yaml',
-            '.toml': 'toml',
-            '.ini': 'ini',
-            '.md': 'markdown',
-            '.rst': 'rst',
-            '.txt': 'text'
-        }
-
-        return language_map.get(extension, 'text')
 
     def _build_focus_areas_prompt(self, focus_areas: Optional[List[str]]) -> str:
         """Build focus areas section of prompt."""
