@@ -421,6 +421,27 @@ GuardResult (exit code 0 or 2)
 - **Purpose**: Protects hook installation script
 - **Type**: Interactive
 
+### Discord Notification Hooks
+
+#### Discord Stop Hook (`discord-stop-hook.py`)
+
+- **Triggers**: Stop event when Claude Code finishes work
+- **Purpose**: Sends Discord webhook notifications with session summary
+- **Type**: Non-blocking notification (always returns 0)
+- **Features**:
+  - Extracts workspace name from current directory
+  - Reads final message from conversation transcript
+  - Sends rich Discord embed with session details
+  - 5-second timeout for webhook calls
+  - Configurable webhook URL via environment or config file
+
+**Configuration Options**:
+1. `DISCORD_WEBHOOK_URL` environment variable
+2. `~/.claude/discord_webhook_config.json` file
+3. Hardcoded fallback URL in script
+
+**Installation**: Run `./install-discord-hook.sh` from hooks directory
+
 ### Reminder Guards (`guards/reminder_guards.py`)
 
 #### ContainerRebuildReminder
@@ -769,6 +790,14 @@ ls -la ~/.claude/
 ## Version History
 
 **UPDATE CHECKLIST**: Add entry when making changes!
+
+### v2.3 (2025-01-24): Discord Stop Hook
+
+- Added Discord Stop Hook for session completion notifications
+- Sends webhook with workspace name, final message, and session details
+- Non-blocking implementation with 5-second timeout
+- Configurable webhook URL via environment variable or config file
+- Includes test script and installation script
 
 ### v2.2 (2025-01-20): Test Protection System Design
 

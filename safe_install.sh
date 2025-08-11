@@ -154,8 +154,8 @@ mkdir -p "$CLAUDE_DIR/guards"
 echo -e "${YELLOW}Installing Python hook implementation...${NC}"
 cp -r "$SCRIPT_DIR/hooks/python/"* "$CLAUDE_DIR/python/"
 
-# Copy wrapper scripts
-for script in adaptive-guard.sh lint-guard.sh; do
+# Copy wrapper scripts and Discord Stop hook
+for script in adaptive-guard.sh lint-guard.sh discord-stop-hook.py; do
     if [[ -f "$SCRIPT_DIR/hooks/$script" ]]; then
         cp "$SCRIPT_DIR/hooks/$script" "$CLAUDE_DIR/$script"
         chmod +x "$CLAUDE_DIR/$script"

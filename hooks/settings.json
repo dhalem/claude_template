@@ -66,6 +66,17 @@
           }
         ]
       }
+    ],
+    "Stop": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/discord-stop-hook.py"
+          }
+        ]
+      }
     ]
   }
 }
